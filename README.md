@@ -42,5 +42,6 @@ $$
 
 ```python
 # 代码实现
+import monet as mn
 Lenet = mn.Mix(1, [[6,16],[120,64],10], [['cv_5','sp_2'],'fc','gc'])
 ```
