@@ -22,8 +22,8 @@
 | $Dp   $   | $Dp1$                | dp1_1_False      | 隐藏层         | `eval(f"nn.Dropout{dim}d")(p=p,inplace=bool(inplace))`                                                                          |
 | $Adp    $ | $Adp$                | aldp_0.5_False   | 隐藏层         | `nn.AlphaDropout(p=p,inplace=bool(inplace))`                                                                                    |
 | $Fadp  $  | $Fadp$               | fadp_0.5_False   | 隐藏层         | `nn.FeatureAlphaDropout(p=p,inplace=bool(inplace))`                                                                             |
-| $Act  $   | $Act$                | act.PReLU        | 激活层         | eval(f"nn.{act_func}")()                                                                                                          |
-| $Nn $     | $Nn$                 | nn.Linear_(10,1) | 通配层         | eval(f"nn.{func}")(*args)                                                                                                         |
+| $Act  $   | $Act$                | act.PReLU        | 激活层         | `eval(f"nn.{act_func}")()`                                                                                                      |
+| $Nn $     | $Nn$                 | nn.Linear_(10,1) | 通配层         | `eval(f"nn.{func}")(*args)`                                                                                                     |
 
 ## 如何用公式表达一个网络
 
@@ -49,7 +49,7 @@ Lenet = mn.Mix(1, [[6,16],[120,64],10], [['cv_5','sp_2'],'fc','gc'])
 
 
 
-# 下一步计划
+# 新特性
 
 - 增加对+和*的支持，实现如下效果
 
@@ -59,5 +59,10 @@ Hid1=Cell(5,1,['fc','act'])
 Hid2=Cell(5,1,['fc','act'])
 Out = Layer(2,1,'fc')
 
-F=(Fc*Hid1+Fc*Hid2)*Out=Fc*(Hid1+Hid2)*Out
+x=torch.tensor([0.0])
+F1=(Fc*Hid1+Fc*Hid2)*Out
+F2=Fc*(Hid1+Hid2)*Out
+F1(x)==F2(x)
+
+>> tensor([True])
 ```
