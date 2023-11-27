@@ -31,19 +31,31 @@
 
 ![1700822677574](image/README/1700822677574.png)
 
-![1700834361797](image/README/1700834361797.jpg)
+![1700835613752](image/README/1700835613752.jpg)
 
 $$
 \begin{array}{c}
-Lenet = CvSpCvSpFcFcGc = 2(CvSp)2FcGc_{}\\
+Lenet = CvSpCvSpFcFcGc = (CvSp)^2Fc^2Gc_{}\\
 Lenet_{32×32}^{1} = Cv2_{5}^6Sp2_{2}^6Cv2_{5}^{16}Sp2_{2}^{16}Fc_{}^{120}Fc_{}^{84}Gc_{}^{10}\\ = (Cv2_{5}Sp2_{2})_{}^{[6,16]}Fc_{}^{[120,84]}Gc_{}^{10}\\ = (Cv_{5}Sp_{2})2_{}^{[6,16]}Fc_{}^{[120,84]}Gc_{}^{10}\\ = (Cv_{5}Sp_{2})_{}^{[6,16]}Fc_{}^{[120,84]}Gc_{}^{10}
 \end{array}
 $$
-
 
 # 代码实现
 
 ```python
 import monet as mn
 Lenet = mn.Mix(1, [[6,16],[120,64],10], [['cv_5','sp_2'],'fc','gc'])
+```
+
+# 下一步计划
+
+- 增加对+和*的支持，实现如下效果
+
+```python
+Fc=Cell(1,5,['fc','act'])
+Hid1=Cell(5,1,['fc','act'])
+Hid2=Cell(5,1,['fc','act'])
+Out = Layer(2,1,'fc')
+
+F=(Fc*Hid1+Fc*Hid2)*Out=Fc*(Hid1+Hid2)*Out
 ```
