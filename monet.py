@@ -110,10 +110,11 @@ def eval_mn(i=10,o=1,name='fc',args_str=[],args_opt=[],mn_dicts=default_dict):
 
 
 class MoNet(nn.Module):
-    def __init__(self,module=[], mode='',in_dim=-1):
+    def __init__(self,module=[], mode='',i=0, in_dim=-1):
         super(MoNet,self).__init__()
         self.mode = mode
-        self.i = 0
+        self.i = i
+        self.auto_i = (i == 0)
         self.in_dim = in_dim
         match mode:
             case "" :
@@ -125,7 +126,11 @@ class MoNet(nn.Module):
                     self.Net = nn.Sequential(*module)
             case "+":
                 self.Net = nn.ModuleList(module)
-    
+        if self.Net!=[] and self.Net.extra_repr() != '' :
+            reprs=self.Net.extra_repr().split(',')
+            self.i = int(reprs[0].split('=')[-1])
+            self.auto_i = (self.i == 0)
+        
     def __iter__(self):
         return iter(self.Net)
     
@@ -169,7 +174,7 @@ class MoNet(nn.Module):
     def set_i(self,*input_size):
         input_x=torch.randn(*input_size)
         net = self.Net[0] if self.Net._get_name() in ['ModuleList','Sequential'] else self
-        net.i=0 # 重置输入维度
+        net.i=0 # type:ignore 重置输入维度  
         if len(input_x.shape)==1:
             net.forward(torch.randn(2,*input_size))
         else:
@@ -178,10 +183,9 @@ class MoNet(nn.Module):
         
     def forward(self, x):
         if self.Net.extra_repr() != '' :
-            reprs=self.Net.extra_repr().split(',')
-            if reprs[0].split('=')[1]=='0' or self.i == 0:
+            if self.auto_i == True and self.i != x.shape[self.in_dim]:
                 self.i = x.shape[self.in_dim]
-                new_repr=','.join([str(x.shape[self.in_dim])]+self.Net.extra_repr().split(',')[1:])
+                new_repr=','.join([str(self.i)]+self.Net.extra_repr().split(',')[1:])
                 self.Net=eval(f"nn.{self.Net._get_name()}({new_repr})")
         if self.mode == "":
             return self.Net(x)
@@ -210,6 +214,7 @@ class Layer(MoNet):
     def __init__(self,i=10,o=1,net="fc_1",mn_dict=mn_dict):
         super(Layer,self).__init__()
         self.i = i
+        self.auto_i = (i == 0)
         self.o = o
         self.o_list = [o]
         self.net = net
@@ -218,7 +223,7 @@ class Layer(MoNet):
         self.Net=layer(i,o,net,mn_dict).Net
     
     def forward(self,x):
-        if self.i == 0:
+        if self.auto_i == True and self.i != x.shape[self.in_dim]:
             self.i = x.shape[self.in_dim]
             self.Net = layer(self.i,self.o,self.net,self.mn_dict).Net
         return self.Net(x)
@@ -240,6 +245,7 @@ class SeqLayer(MoNet):
     def __init__(self,i=10,o_list=[64,64],net="fc_1",mn_dict=mn_dict):
         super(SeqLayer,self).__init__()
         self.i = i
+        self.auto_i = (i == 0)
         self.o = o_list[-1]
         self.o_list = o_list
         self.net = net
@@ -248,7 +254,7 @@ class SeqLayer(MoNet):
         self.Net=seqLayer(i,o_list,net,mn_dict).Net
         
     def forward(self,x):
-        if self.i == 0:
+        if self.auto_i == True and self.i != x.shape[self.in_dim]:
             self.i = x.shape[self.in_dim]
             self.Net[0] = layer(self.i,self.o_list[0],self.net,self.mn_dict).Net
         return self.Net(x)
@@ -270,6 +276,7 @@ class Cell(MoNet):
     def __init__(self,i=10,o=1,net_list=["fc","bn","act","dp"],mn_dict=mn_dict):
         super(Cell,self).__init__()
         self.i = i
+        self.auto_i = (i == 0)
         self.o = o
         self.o_list = [o]
         self.net = net_list
@@ -278,7 +285,7 @@ class Cell(MoNet):
         self.Net=cell(i,o,net_list,mn_dict).Net
         
     def forward(self,x):
-        if self.i == 0:
+        if self.auto_i == True and self.i != x.shape[self.in_dim]:
             self.i = x.shape[self.in_dim]
             self.Net[0] = layer(self.i,self.o,self.net[0],self.mn_dict).Net
         return self.Net(x)
@@ -302,6 +309,7 @@ class SeqCell(MoNet):
     def __init__(self,i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],name='cell',mn_dict=mn_dict):
         super(SeqCell,self).__init__()
         self.i = i
+        self.auto_i = (i == 0)
         self.o = o_list[-1]
         self.o_list = o_list
         self.mn_dict = mn_dict
@@ -310,7 +318,7 @@ class SeqCell(MoNet):
         self.Net=seqCell(i,o_list,net_list,name,mn_dict).Net
         
     def forward(self,x):
-        if self.i == 0:
+        if self.auto_i == True and self.i != x.shape[self.in_dim]:
             self.i = x.shape[self.in_dim]
             self.Net[0][0] = layer(self.i,self.o_list[0],self.net[0],self.mn_dict).Net # type: ignore
         return self.Net(x)
@@ -353,6 +361,7 @@ class Mix(MoNet):
     def __init__(self,i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5'],"fc"],name_list=[''],mn_dict=mn_dict):
         super(Mix,self).__init__()
         self.i = i,
+        self.auto_i = (i == 0)
         self.o = o_lists[-1],
         self.o_list = o_lists
         self.net = net_lists
