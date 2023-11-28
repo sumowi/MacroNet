@@ -1,5 +1,11 @@
+from re import X
 import torch
 import torch.nn as nn
+
+# 额外的模块，会优先于default_dict被检查
+mn_dict={
+    
+    }
 
 # 默认预定义的模块
 default_dict={
@@ -7,14 +13,14 @@ default_dict={
         nn.Linear(in_features=i,out_features=o,bias=bias),
     "bfc_True": lambda i,o,bias: 
         nn.Bilinear(in1_features=i[0],in2_features=i[1],out_features=o,bias=bias),
-    "flat_1_-1": lambda i,o,start_dim,end_dim: 
+    "fl_1_-1": lambda i,o,start_dim,end_dim: 
         nn.Flatten(start_dim=start_dim,end_dim=end_dim),
         
     # 卷积核带维度数，默认2维
-    "cov2_3_1_0_True": lambda i,o,dim,kernel_size,stride,padding,bias:
+    "cv2_3_1_0_True": lambda i,o,dim,kernel_size,stride,padding,bias:
         eval(f"nn.Conv{dim}d")(in_channels=i,out_channels=o,kernel_size=kernel_size,
                                stride=stride,padding=padding,bias=bool(bias)), # 卷积
-    "covT2_3_1_0_True": lambda i,o,dim,kernel_size,stride,padding,bias:
+    "cvT2_3_1_0_True": lambda i,o,dim,kernel_size,stride,padding,bias:
         eval(f"nn.ConvTranspose{dim}d")(in_channels=i,out_channels=o,kernel_size=kernel_size,
                                         stride=stride,padding=padding,bias=bias), # 反卷积
     # 最大池化带维度数，默认2维 
@@ -64,10 +70,10 @@ default_dict={
     
 }
 
-# 额外的模块，会优先于default_dict被检查
-mn_dict={
-    
-    }
+
+
+
+
 
 def get_args(net="fc_1"):
     # _分隔值形参数，.分割字符串形式参数
@@ -99,48 +105,97 @@ def eval_mn(i=10,o=1,name='fc',args_str=[],args_opt=[],mn_dicts=default_dict):
             return mn_dicts[monet](i,o,*args)
     return 0
 
+
+
+
+
 class MoNet(nn.Module):
-    def __init__(self,Module=[],mode=''):
+    def __init__(self,module=[], mode='',in_dim=-1):
         super(MoNet,self).__init__()
         self.mode = mode
+        self.i = 0
+        self.in_dim = in_dim
         match mode:
             case "" :
-                self.Net = Module
+                self.Net = module
             case "*":
-                if len(Module)==1:
-                    self.Net = Module[0]
+                if len(module)==1:
+                    self.Net = module[0]
                 else:
-                    self.Net = nn.Sequential(*Module)
+                    self.Net = nn.Sequential(*module)
             case "+":
-                self.Net = nn.ModuleList(Module)
+                self.Net = nn.ModuleList(module)
     
     def __iter__(self):
         return iter(self.Net)
     
     def __mul__(self, other):
-        res = [self,other]
-        return MoNet(Module=res,mode='*')
+        import copy
+        if isinstance(other,int):
+            return MoNet(module=[self]*other,mode='*',in_dim=self.in_dim) if other !=1 else self
+        else:
+            res = []
+            res += [*self] if self.Net._get_name() == 'Sequential' and self._get_name() == 'MoNet' else [self]
+            res += [*other] if other.Net._get_name() == 'Sequential' and other._get_name() == 'MoNet' else [other]
+            return MoNet(module=res,mode='*',in_dim=self.in_dim)
     
     def __add__(self, other):
-        res = [self,other]
-        return MoNet(Module=res,mode='+')
+        import copy
+        res = []
+        res += [*self] if self.Net._get_name() == 'ModuleList' and self._get_name() == 'MoNet' else [self]
+        res += [*other] if other.Net._get_name() == 'ModuleList' and other._get_name() == 'MoNet' else [other]
+        return MoNet(module=res,mode='+',in_dim=self.in_dim)
     
-    # TODO: 写得有问题
-    # def __repr__(self):
-    #     if self.mode == "*":
-    #         return f'MoNet({self.__repr__})'
-    #     elif self.mode == "+":
-    #         return f'MoNet(Cat>{self.__repr__})'
+    def __pow__(self, other):
+        import copy
+        if isinstance(other,int):
+            return MoNet(module=[copy.deepcopy(self) for i in range(other)],
+                         mode='*',in_dim=self.in_dim) if other !=1 else copy.deepcopy(self)
+        else:
+            res = []
+            res += [*self] if self.Net._get_name() == 'Sequential' and self._get_name() == 'MoNet' else [self]
+            res = copy.deepcopy(res) # 深拷贝
+            res += [*other] if other.Net._get_name() == 'Sequential' and other._get_name() == 'MoNet' else [other]
+            return MoNet(module=copy.deepcopy(res),mode='*',in_dim=self.in_dim)
     
+    def __and__(self, other):
+        import copy
+        res = []
+        res += [*self] if self.Net._get_name() == 'ModuleList' and self._get_name() == 'MoNet' else [self]
+        res = copy.deepcopy(res) # 深拷贝
+        res += [*other] if other.Net._get_name() == 'ModuleList' and other._get_name() == 'MoNet' else [other]
+        return MoNet(module=copy.deepcopy(res),mode='+',in_dim=self.in_dim)
+    
+    def set_i(self,*input_size):
+        input_x=torch.randn(*input_size)
+        net = self.Net[0] if self.Net._get_name() in ['ModuleList','Sequential'] else self
+        net.i=0 # 重置输入维度
+        if len(input_x.shape)==1:
+            net.forward(torch.randn(2,*input_size))
+        else:
+            net.forward(input_x)
+        return self
+        
     def forward(self, x):
+        if self.Net.extra_repr() != '' :
+            reprs=self.Net.extra_repr().split(',')
+            if reprs[0].split('=')[1]=='0' or self.i == 0:
+                self.i = x.shape[self.in_dim]
+                new_repr=','.join([str(x.shape[self.in_dim])]+self.Net.extra_repr().split(',')[1:])
+                self.Net=eval(f"nn.{self.Net._get_name()}({new_repr})")
         if self.mode == "":
             return self.Net(x)
         elif self.mode == "*":
             return self.Net(x)
         elif self.mode == "+":
-            x1 = self.Net[0](x)
-            x2 = self.Net[1](x)
-            return torch.cat([x1,x2],dim=0)
+            y = torch.tensor([])
+            for i,net in enumerate(self.Net):
+                y = net(x) if i ==0 else torch.cat([y,net(x)],dim=self.in_dim)
+            return y
+
+
+
+
 
 def layer(i=10,o=1,net="fc_1",mn_dict=mn_dict):
     # 获取参数
@@ -152,20 +207,25 @@ def layer(i=10,o=1,net="fc_1",mn_dict=mn_dict):
     return MoNet(Net)
 
 class Layer(MoNet):
-    def __init__(self,i=10,o=1,net="fc_1",mn_dict=mn_dict,in_dim=1):
+    def __init__(self,i=10,o=1,net="fc_1",mn_dict=mn_dict):
         super(Layer,self).__init__()
-        self.net = net
         self.i = i
         self.o = o
-        self.mn_dict = mn_dict
-        self.in_dim = in_dim
+        self.o_list = [o]
+        self.net = net
+        self.mn_dict = mn_dict 
+        self.in_dim = 1 if self.net.startswith("cv") else -1
         self.Net=layer(i,o,net,mn_dict).Net
-        
+    
     def forward(self,x):
-        if x.shape[self.in_dim] != self.i:
+        if self.i == 0:
             self.i = x.shape[self.in_dim]
             self.Net = layer(self.i,self.o,self.net,self.mn_dict).Net
         return self.Net(x)
+
+
+
+
 
 def seqLayer(i=10,o_list=[64,64],net="fc_1",mn_dict=mn_dict):
     # 获取参数
@@ -173,23 +233,29 @@ def seqLayer(i=10,o_list=[64,64],net="fc_1",mn_dict=mn_dict):
     Net = nn.Sequential()
     for n,o in enumerate(o_list):
         Net.add_module(f"{net}_{n}",Layer(i,o,net,mn_dict).Net)
+        i=o
     return MoNet(Net)
 
 class SeqLayer(MoNet):
-    def __init__(self,i=10,o_list=[64,64],net="fc_1",mn_dict=mn_dict,in_dim=1):
+    def __init__(self,i=10,o_list=[64,64],net="fc_1",mn_dict=mn_dict):
         super(SeqLayer,self).__init__()
-        self.net = net
         self.i = i
-        self.o = o_list
+        self.o = o_list[-1]
+        self.o_list = o_list
+        self.net = net
         self.mn_dict = mn_dict
-        self.in_dim = in_dim
+        self.in_dim = 1 if self.net.startswith("cv") else -1
         self.Net=seqLayer(i,o_list,net,mn_dict).Net
         
     def forward(self,x):
-        if x.shape[self.in_dim] != self.i:
+        if self.i == 0:
             self.i = x.shape[self.in_dim]
-            self.Net = layer(self.i,self.o,self.net,self.mn_dict).Net
+            self.Net[0] = layer(self.i,self.o_list[0],self.net,self.mn_dict).Net
         return self.Net(x)
+
+
+
+
 
 def cell(i=10,o=1,net_list=["fc","bn","act","dp"],mn_dict=mn_dict):
     # 获取参数
@@ -201,20 +267,25 @@ def cell(i=10,o=1,net_list=["fc","bn","act","dp"],mn_dict=mn_dict):
     return MoNet(Net)
 
 class Cell(MoNet):
-    def __init__(self,i=10,o=1,net_list=["fc","bn","act","dp"],mn_dict=mn_dict, in_dim=1):
+    def __init__(self,i=10,o=1,net_list=["fc","bn","act","dp"],mn_dict=mn_dict):
         super(Cell,self).__init__()
-        self.net = net_list
         self.i = i
         self.o = o
+        self.o_list = [o]
+        self.net = net_list
         self.mn_dict = mn_dict
-        self.in_dim = in_dim
+        self.in_dim = 1 if self.net[0].startswith("cv") else -1
         self.Net=cell(i,o,net_list,mn_dict).Net
         
     def forward(self,x):
-        if x.shape[self.in_dim] != self.i:
+        if self.i == 0:
             self.i = x.shape[self.in_dim]
             self.Net[0] = layer(self.i,self.o,self.net[0],self.mn_dict).Net
         return self.Net(x)
+
+
+
+
 
 def seqCell(i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],name='cell',mn_dict=mn_dict):
     # 获取参数
@@ -228,22 +299,26 @@ def seqCell(i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],name='cell',mn_di
     return MoNet(Net)
 
 class SeqCell(MoNet):
-    def __init__(self,i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],name='cell',mn_dict=mn_dict, in_dim=1):
+    def __init__(self,i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],name='cell',mn_dict=mn_dict):
         super(SeqCell,self).__init__()
-        self.net = net_list
         self.i = i
-        self.o = o_list
+        self.o = o_list[-1]
+        self.o_list = o_list
         self.mn_dict = mn_dict
-        self.in_dim = 1
+        self.net = net_list
+        self.in_dim = 1 if net_list[0].startswith("cv") else -1
         self.Net=seqCell(i,o_list,net_list,name,mn_dict).Net
         
     def forward(self,x):
-        if x.shape[self.in_dim] != self.i:
+        if self.i == 0:
             self.i = x.shape[self.in_dim]
-            self.Net[0] = layer(self.i,self.o[0],self.net[0],self.mn_dict).Net
+            self.Net[0][0] = layer(self.i,self.o_list[0],self.net[0],self.mn_dict).Net # type: ignore
         return self.Net(x)
 
-def mix(i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5'],"fc"],name_list=['input','hiddens','out'],mn_dict=mn_dict):
+
+
+
+def mix(i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5'],"fc"],name_list=[''],mn_dict=mn_dict):
     o_lists = [o_lists] if type(o_lists)==int else o_lists
     net_lists = [net_lists] if type(net_lists)==str else net_lists
     name_list = [name_list] if type(name_list)==str else name_list
@@ -254,7 +329,10 @@ def mix(i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5
     if len(o_lists)==1:
         o_lists=[o_lists[0]]*cell_num
     if len(name_list)==1:
-        name_list=[name_list[0]]*cell_num
+        if name_list[0]!='':
+            name_list=[name_list[0]]*cell_num
+        else:
+            name_list=['input']+['hiddens']*(cell_num-2)+['output']
     
     Net=nn.Sequential()
     for n,(net_list,o) in enumerate(zip(net_lists, o_lists)):
@@ -272,18 +350,16 @@ def mix(i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5
     return MoNet(Net)
 
 class Mix(MoNet):
-    def __init__(self,i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5'],"fc"],name_list=['input','hiddens','out'],mn_dict=mn_dict, in_dim = 1):
+    def __init__(self,i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5'],"fc"],name_list=[''],mn_dict=mn_dict):
         super(Mix,self).__init__()
-        self.net_lists = net_lists
         self.i = i,
-        self.o = o_lists,
+        self.o = o_lists[-1],
+        self.o_list = o_lists
+        self.net = net_lists
         self.mn_dict = mn_dict
-        self.in_dim = in_dim
         self.Net=mix(i,o_lists,net_lists,name_list,mn_dict).Net
+        self.in_dim = self.Net[0].in_dim
         
     def forward(self,x):
-        if x.shape[self.in_dim] != self.i:
-            self.i = x.shape[self.in_dim]
-            self.Net[0] = layer(self.i,self.o[0],self.net[0],self.mn_dict).Net
         return self.Net(x)
     

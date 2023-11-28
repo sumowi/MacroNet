@@ -80,39 +80,51 @@ F1(x)==F2(x)
 >> tensor([True])
 ```
 
-- 首字母大写Layer, Cell，Mix 等相比小写layer，cell，mix等具有根据输入自适应调整顶层输入形状的能力
-
-  - 如果不希望网络自适应输入维度，则使用小写网络；否则使用首字母大写网络
+- 增加对&和**的支持，与+和*不同的是，前者为深拷贝，后者为钱拷贝
 
 ```python
-A = Cell(in_dim=-1)
-print(A)
-q=A(torch.tensor([[0.0,0.0],[1.0,1.0]]))
-print(q)
-print(A)
+from monet import *
 
->> Cell(
-  (Net): Sequential(
-    (0:fc): Linear(in_features=10, out_features=1, bias=True)
-    (1:bn): BatchNorm1d(1, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (2:act): PReLU(num_parameters=1)
-    (3:dp): Dropout(p=0.5, inplace=False)
-  )
-)
-tensor([[ 2.0000],
-        [-0.5000]], grad_fn=<MulBackward0>)
-Cell(
-  (Net): Sequential(
-    (0:fc): Linear(in_features=2, out_features=1, bias=True)
-    (1:bn): BatchNorm1d(1, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-    (2:act): PReLU(num_parameters=1)
-    (3:dp): Dropout(p=0.5, inplace=False)
-  )
-)
+A=layer()
+A2=layer()
+id(A),id(A2)
+>> (3077652475968, 3077652479280)
+id((A*1)),id((A*2).Net[0]),id((A*2).Net[1]) # 浅拷贝
+>> (3077652475968, 3077652475968, 3077652475968)
+B=A*A*A2  # 浅拷贝
+id(B.Net[0]),id(B.Net[1]),id(B.Net[2])
+>> (3077652475968, 3077652475968, 3077652479280)
+id((A**1)),id((A**2).Net[0]),id((A**2).Net[1]) # 深拷贝
+>> (3077652472080, 3077652473616, 3077652472080)
+B=(A**A)**3  # 深拷贝
+id(B.Net[0].Net[0]),id(B.Net[1].Net[0]),id(B.Net[2].Net[0])
+>> (3077652744368, 3077652745136, 3077652746000)
+id((A+A)),id((A+A).Net[0]),id((A+A).Net[1]) # 浅拷贝
+>> (3079367948560, 3077652475968, 3077652475968)
+id((A&A)),id((A&A).Net[0]),id((A&A).Net[1]) # 深拷贝
+>> (3079366077712, 3077652744320, 3077652747920)
 ```
 
 
+- 设置输入维度为0，用set_i()或在首次forward时自适应调整顶层输入形状
+
+```python
+from monet import *
+
+F=Layer(0)
+F(torch.tensor([[0.0]])),F
+>> (tensor([[0.0698]], grad_fn=<AddmmBackward0>),
+ Layer(
+   (Net): Linear(in_features=1, out_features=1, bias=True)
+ ))
+
+F.set_i(2)(torch.tensor([[0.0,1.0]])),F
+>> (tensor([[-0.0044]], grad_fn=<AddmmBackward0>),
+ Layer(
+   (Net): Linear(in_features=2, out_features=1, bias=True)
+ ))
+```
+
 # 下一步计划
 
-- 数字与MoNet的乘法，幂的支持？
-- 除法与减法等更多运算的意义？
+- 更广泛的流式编程？
