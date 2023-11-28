@@ -152,17 +152,18 @@ def layer(i=10,o=1,net="fc_1",mn_dict=mn_dict):
     return MoNet(Net)
 
 class Layer(MoNet):
-    def __init__(self,i=10,o=1,net="fc_1",mn_dict=mn_dict):
+    def __init__(self,i=10,o=1,net="fc_1",mn_dict=mn_dict,in_dim=1):
         super(Layer,self).__init__()
         self.net = net
         self.i = i
         self.o = o
         self.mn_dict = mn_dict
+        self.in_dim = in_dim
         self.Net=layer(i,o,net,mn_dict).Net
         
     def forward(self,x):
-        if x.shape[1] != self.i:
-            self.i = x.shape[1]
+        if x.shape[self.in_dim] != self.i:
+            self.i = x.shape[self.in_dim]
             self.Net = layer(self.i,self.o,self.net,self.mn_dict).Net
         return self.Net(x)
 
@@ -175,18 +176,19 @@ def seqLayer(i=10,o_list=[64,64],net="fc_1",mn_dict=mn_dict):
     return MoNet(Net)
 
 class SeqLayer(MoNet):
-    def __init__(self,i=10,o_list=[64,64],net="fc_1",mn_dict=mn_dict):
+    def __init__(self,i=10,o_list=[64,64],net="fc_1",mn_dict=mn_dict,in_dim=1):
         super(SeqLayer,self).__init__()
         self.net = net
         self.i = i
         self.o = o_list
         self.mn_dict = mn_dict
+        self.in_dim = in_dim
         self.Net=seqLayer(i,o_list,net,mn_dict).Net
         
     def forward(self,x):
-        if x.shape[1] != self.i:
-            self.i = x.shape[1]
-            self.Net[0] = layer(self.i,self.o[0],self.net,self.mn_dict).Net
+        if x.shape[self.in_dim] != self.i:
+            self.i = x.shape[self.in_dim]
+            self.Net = layer(self.i,self.o,self.net,self.mn_dict).Net
         return self.Net(x)
 
 def cell(i=10,o=1,net_list=["fc","bn","act","dp"],mn_dict=mn_dict):
@@ -199,17 +201,18 @@ def cell(i=10,o=1,net_list=["fc","bn","act","dp"],mn_dict=mn_dict):
     return MoNet(Net)
 
 class Cell(MoNet):
-    def __init__(self,i=10,o=1,net_list=["fc","bn","act","dp"],mn_dict=mn_dict):
+    def __init__(self,i=10,o=1,net_list=["fc","bn","act","dp"],mn_dict=mn_dict, in_dim=1):
         super(Cell,self).__init__()
         self.net = net_list
         self.i = i
         self.o = o
         self.mn_dict = mn_dict
+        self.in_dim = in_dim
         self.Net=cell(i,o,net_list,mn_dict).Net
         
     def forward(self,x):
-        if x.shape[1] != self.i:
-            self.i = x.shape[1]
+        if x.shape[self.in_dim] != self.i:
+            self.i = x.shape[self.in_dim]
             self.Net[0] = layer(self.i,self.o,self.net[0],self.mn_dict).Net
         return self.Net(x)
 
@@ -225,17 +228,18 @@ def seqCell(i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],name='cell',mn_di
     return MoNet(Net)
 
 class SeqCell(MoNet):
-    def __init__(self,i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],name='cell',mn_dict=mn_dict):
+    def __init__(self,i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],name='cell',mn_dict=mn_dict, in_dim=1):
         super(SeqCell,self).__init__()
         self.net = net_list
         self.i = i
         self.o = o_list
         self.mn_dict = mn_dict
+        self.in_dim = 1
         self.Net=seqCell(i,o_list,net_list,name,mn_dict).Net
         
     def forward(self,x):
-        if x.shape[1] != self.i:
-            self.i = x.shape[1]
+        if x.shape[self.in_dim] != self.i:
+            self.i = x.shape[self.in_dim]
             self.Net[0] = layer(self.i,self.o[0],self.net[0],self.mn_dict).Net
         return self.Net(x)
 
@@ -261,17 +265,18 @@ def mix(i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5
     return MoNet(Net)
 
 class Mix(MoNet):
-    def __init__(self,i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5'],"fc"],name_list=['input','hiddens','out'],mn_dict=mn_dict):
+    def __init__(self,i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5'],"fc"],name_list=['input','hiddens','out'],mn_dict=mn_dict, in_dim = 1):
         super(Mix,self).__init__()
         self.net_lists = net_lists
         self.i = i,
         self.o = o_lists,
         self.mn_dict = mn_dict
+        self.in_dim = in_dim
         self.Net=mix(i,o_lists,net_lists,name_list,mn_dict).Net
         
     def forward(self,x):
-        if x.shape[1] != self.i:
-            self.i = x.shape[1]
+        if x.shape[self.in_dim] != self.i:
+            self.i = x.shape[self.in_dim]
             self.Net[0] = layer(self.i,self.o[0],self.net[0],self.mn_dict).Net
         return self.Net(x)
     
