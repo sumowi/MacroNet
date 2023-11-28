@@ -56,7 +56,7 @@ $$
 # 代码实现
 
 ```python
-import MoNet as mn
+import monet as mn
 Lenet = mn.Mix(1, [[6,16],[120,64],10], [['cv_5','sp_2'],'fc','gc'])
 ```
 
@@ -65,7 +65,7 @@ Lenet = mn.Mix(1, [[6,16],[120,64],10], [['cv_5','sp_2'],'fc','gc'])
 - 增加对+和*的支持，实现如下效果
 
 ```python
-from MoNet import *
+from monet import *
 
 Fc=Cell(1,5,['fc','act'])
 Hid1=Cell(5,1,['fc','act'])
@@ -81,7 +81,36 @@ F1(x)==F2(x)
 ```
 
 - 首字母大写Layer, Cell，Mix 等相比小写layer，cell，mix等具有根据输入自适应调整顶层输入形状的能力
+
   - 如果不希望网络自适应输入维度，则使用小写网络；否则使用首字母大写网络
+
+```python
+A = Cell(in_dim=-1)
+print(A)
+q=A(torch.tensor([[0.0,0.0],[1.0,1.0]]))
+print(q)
+print(A)
+
+>> Cell(
+  (Net): Sequential(
+    (0:fc): Linear(in_features=10, out_features=1, bias=True)
+    (1:bn): BatchNorm1d(1, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2:act): PReLU(num_parameters=1)
+    (3:dp): Dropout(p=0.5, inplace=False)
+  )
+)
+tensor([[ 2.0000],
+        [-0.5000]], grad_fn=<MulBackward0>)
+Cell(
+  (Net): Sequential(
+    (0:fc): Linear(in_features=2, out_features=1, bias=True)
+    (1:bn): BatchNorm1d(1, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2:act): PReLU(num_parameters=1)
+    (3:dp): Dropout(p=0.5, inplace=False)
+  )
+)
+```
+
 
 # 下一步计划
 

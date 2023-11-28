@@ -260,7 +260,14 @@ def mix(i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5
     for n,(net_list,o) in enumerate(zip(net_lists, o_lists)):
         o = [o] if type(o) == int else o
         net_list = [net_list] if type(net_list) == str else net_list
-        Net.add_module(f'{n}:{name_list[n]}',SeqCell(i,o,net_list,'cell',mn_dict).Net) # type: ignore
+        if len(o) > 1 and len(net_list)>1: # type: ignore
+            Net.add_module(f'{n}:{name_list[n]}',SeqCell(i,o,net_list,'cell',mn_dict)) # type: ignore
+        elif len(o) == 1 and len(net_list)>1: # type: ignore
+            Net.add_module(f'{n}:{name_list[n]}',Cell(i,o[0],net_list,mn_dict)) # type: ignore
+        elif len(o) > 1 and len(net_list)==1: # type: ignore
+            Net.add_module(f'{n}:{name_list[n]}',SeqLayer(i,o,net_list[0],mn_dict)) # type: ignore
+        else:
+            Net.add_module(f'{n}:{name_list[n]}',Layer(i,o[0],net_list[0],mn_dict)) # type: ignore
         i = o[-1] # type: ignore
     return MoNet(Net)
 
