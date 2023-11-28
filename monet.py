@@ -110,26 +110,26 @@ def eval_mn(i=10,o=1,name='fc',args_str=[],args_opt=[],mn_dicts=default_dict):
 
 
 class MoNet(nn.Module):
-    def __init__(self,module=[], mode='',i=0, in_dim=-1):
+    def __init__(self,module=[], mode='*',i=0, in_dim=-1):
         super(MoNet,self).__init__()
-        self.mode = mode
-        self.i = i
-        self.auto_i = (i == 0)
+        self.module = module if isinstance(module,list) else [module]
+        self.mode = '' if len(self.module)==1 else mode
         self.in_dim = in_dim
-        match mode:
+        match self.mode:
             case "" :
-                self.Net = module
+                self.Net = self.module[0]
             case "*":
-                if len(module)==1:
-                    self.Net = module[0]
-                else:
-                    self.Net = nn.Sequential(*module)
+                self.Net = nn.Sequential(*self.module)
             case "+":
-                self.Net = nn.ModuleList(module)
-        if self.Net!=[] and self.Net.extra_repr() != '' :
+                self.Net = nn.ModuleList(self.module)
+                
+        try:
             reprs=self.Net.extra_repr().split(',')
             self.i = int(reprs[0].split('=')[-1])
             self.auto_i = (self.i == 0)
+        except:
+            self.i = i
+            self.auto_i = (i == 0)
         
     def __iter__(self):
         return iter(self.Net)
@@ -297,19 +297,19 @@ class Cell(MoNet):
 
 
 
-def seqCell(i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],name='cell',mn_dict=mn_dict):
+def seqCell(i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],mn_dict=mn_dict):
     # 获取参数
     o_list = [o_list] if type(o_list)==int else o_list
     net_list = [net_list] if type(net_list)==str else net_list
     
     Net = nn.Sequential()
     for n,o in enumerate(o_list):
-        Net.add_module(f"{name}-{n}",Cell(i,o,net_list,mn_dict).Net)
+        Net.add_module(f"{n}",Cell(i,o,net_list,mn_dict))
         i=o
     return MoNet(Net)
 
 class SeqCell(MoNet):
-    def __init__(self,i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],name='cell',mn_dict=mn_dict):
+    def __init__(self,i=10,o_list=[10,1],net_list=["fc","bn","act","dp"],mn_dict=mn_dict):
         super(SeqCell,self).__init__()
         self.i = i
         self.auto_i = (i == 0)
@@ -318,12 +318,12 @@ class SeqCell(MoNet):
         self.mn_dict = mn_dict
         self.net = net_list
         self.in_dim = 1 if net_list[0].startswith("cv") else -1
-        self.Net=seqCell(i,o_list,net_list,name,mn_dict).Net
+        self.Net=seqCell(i,o_list,net_list,mn_dict).Net
         
     def forward(self,x):
         if self.auto_i == True and self.i != x.shape[self.in_dim]:
             self.i = x.shape[self.in_dim]
-            self.Net[0][0] = layer(self.i,self.o_list[0],self.net[0],self.mn_dict).Net # type: ignore
+            self.Net[0].Net[0] = layer(self.i,self.o_list[0],self.net[0],self.mn_dict).Net # type: ignore
         return self.Net(x)
 
 
@@ -350,7 +350,7 @@ def mix(i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5
         o = [o] if type(o) == int else o
         net_list = [net_list] if type(net_list) == str else net_list
         if len(o) > 1 and len(net_list)>1: # type: ignore
-            Net.add_module(f'{n}:{name_list[n]}',SeqCell(i,o,net_list,'cell',mn_dict)) # type: ignore
+            Net.add_module(f'{n}:{name_list[n]}',SeqCell(i,o,net_list,mn_dict)) # type: ignore
         elif len(o) == 1 and len(net_list)>1: # type: ignore
             Net.add_module(f'{n}:{name_list[n]}',Cell(i,o[0],net_list,mn_dict)) # type: ignore
         elif len(o) > 1 and len(net_list)==1: # type: ignore
@@ -361,13 +361,13 @@ def mix(i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5
     return MoNet(Net)
 
 class Mix(MoNet):
-    def __init__(self,i=10,o_lists=[10,[32,32],1],net_lists=['dp_0.2',["fc",'bn','act','dp_0.5'],"fc"],name_list=[''],mn_dict=mn_dict):
+    def __init__(self,i=10,o_lists=[10,[32,32],1],net_lists=[["fc",'bn','act','dp_0.5'],"fc"],name_list=[''],mn_dict=mn_dict):
         super(Mix,self).__init__()
         self.i = i,
         self.auto_i = (i == 0)
-        self.o = o_lists[-1],
-        self.o_list = o_lists
-        self.net = net_lists
+        self.o = o_lists if isinstance(o_lists,int) else o_lists[-1],
+        self.o_list =  [o_lists] if isinstance(o_lists,int) else o_lists
+        self.net = [o_lists] if isinstance(net_lists,str) else net_lists
         self.mn_dict = mn_dict
         self.Net=mix(i,o_lists,net_lists,name_list,mn_dict).Net
         self.in_dim = self.Net[0].in_dim
