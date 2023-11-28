@@ -110,10 +110,9 @@ id((A&A)),id((A&A).Net[0]),id((A&A).Net[1]) # 深拷贝
 
 ```python
 from monet import *
-
-F=Cell(0,10,['cv','fl'])*layer(0,1)
+F=Cell(2,10,['cv','fl'])*layer(0,1)
 F(torch.randn(1,2,3,3)),F
->> (tensor([[-0.2945]], grad_fn=<AddmmBackward0>),
+>> (tensor([[0.4370]], grad_fn=<AddmmBackward0>),
  MoNet(
    (Net): Sequential(
      (0): Cell(
@@ -128,13 +127,14 @@ F(torch.randn(1,2,3,3)),F
    )
  ))
 
-F.set_i(1,2,6,6)(torch.randn(1,2,6,6)),F
->> (tensor([[0.2926]], grad_fn=<AddmmBackward0>),
+# set_i可强制改变输入层维度
+F.set_i(1,3,6,6)(torch.randn(1,3,6,6)),F
+>> (tensor([[0.0472]], grad_fn=<AddmmBackward0>),
  MoNet(
    (Net): Sequential(
      (0): Cell(
        (Net): Sequential(
-         (0:cv): Conv2d(2, 10, kernel_size=(3, 3), stride=(1, 1))
+         (0:cv): Conv2d(3, 10, kernel_size=(3, 3), stride=(1, 1))
          (1:fl): Flatten(start_dim=1, end_dim=-1)
        )
      )

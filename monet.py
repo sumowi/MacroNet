@@ -175,10 +175,13 @@ class MoNet(nn.Module):
         input_x=torch.randn(*input_size)
         net = self.Net[0] if self.Net._get_name() in ['ModuleList','Sequential'] else self
         net.i=0 # type:ignore 重置输入维度  
+        auto_i = net.auto_i
+        net.auto_i = True # type:ignore
         if len(input_x.shape)==1:
             net.forward(torch.randn(2,*input_size))
         else:
             net.forward(input_x)
+        net.auto_i = auto_i # type:ignore
         return self
         
     def forward(self, x):
