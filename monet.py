@@ -3,7 +3,8 @@ import re
 from typing import Callable
 import torch
 import torch.nn as nn
-from .flowfunc import FuncModel
+from .flowfunc import FuncModel as Fn
+from .flowfunc import get_name
 # 额外的模块，会优先于default_dict被检查
 mn_dict={
     
@@ -108,28 +109,36 @@ def eval_mn(i=0,o=1,name='fc',args_str=[],args_opt=[],mn_dicts=default_dict):
     return 0
 
 
+
+
+
 # 通过字符串形式构建函数
-class FLOW(FuncModel):
-    def __init__(self,module=[],i=0,o=0,net='',mn_dict={},in_dim=-1):
-        super(FLOW,self).__init__()
+class Adup(Fn):
+    def __init__(self,module=None,i=-1,o=0,net='',mn_dict={},in_dim=-1):
+        super(Adup,self).__init__()
         self.i = i
         self.auto_i = (i == 0)
         self.o = o
-        self.net =net
-        self.in_dim = 1 if net.startswith("cv") and in_dim==-1 else in_dim
+        self.net = net
         self.mn_dict = mn_dict
-        if module != []:
-            self.Net=self.dup(module)
+        self.in_dim = 1 if net.startswith("cv") and in_dim==-1 else in_dim
+        if module!=None:
+            self.Net = module
     
     def forward(self,x,*args,**kwargs):
         if self.auto_i == True and self.i != x.shape[self.in_dim]:
             self.i = x.shape[self.in_dim]
-            self.Net = layer(self.i,self.o,self.net,self.mn_dict).Net
+            print("[Warning] Input dim is not match, set to {}".format(self.i))
+            self.Net = [*Layer(self.i,self.o,self.net,self.mn_dict,self.in_dim)][0].Net
             self.Net.to(x.device)
-        return self.Net(x,*args,**kwargs)
+        return super().forward(x,*args,**kwargs)
+    
+    def __repr__(self):
+        main_str=self.__class__.__name__
+        return f'@{main_str}:'+ str(repr(self.Net) + f' *id:{id(self)}')
 
 
-def layer(i: int | str | list=0,
+def Layer(i: int | str | list=0,
           o:int | list=1,
           net:str | list ="fc_1",
           mn_dict=mn_dict,
@@ -146,52 +155,42 @@ def layer(i: int | str | list=0,
     o_list.extend([o_list[-1]]*(max_len-len(o_list))) # type: ignore
     
     print(o_list,net_list)
-    Nets = FLOW()
+    Nets = Fn()
     for k,(o,net) in enumerate(zip(o_list , net_list)): # type: ignore
         if isinstance(o,(list,tuple)) and isinstance(net,(list,tuple)):
-            Nets.add_module(f"{k}:mix",layer(i,o,[net],mn_dict,in_dim))
+            Nets.add_module(f"{k}:mix",Layer(i,o,[net],mn_dict,in_dim))
             i = o[-1]
         elif isinstance(net,(list,tuple)):
-            Nets.add_module(f"cell-{k}",layer(i,o,net,mn_dict,in_dim))
+            Nets.add_module(f"cell-{k}",Layer(i,o,net,mn_dict,in_dim))
             i = o
         elif isinstance(o,(list,tuple)):
-            Net = layer(i,o,[net],mn_dict,in_dim)
+            Net = Layer(i,o,[net],mn_dict,in_dim)
             Nets.add_module(f"{k}:{net} x {len(Net)}",nn.Sequential(*Net))
             i = o[-1]
         else:
             assert isinstance(net,(str,Callable)),f"{net} is not a string or Callable"
             name = ''
             if isinstance(net,str):
-                # 获取参数
-                args=get_args(net)
-                Net = eval_mn(i,o,*args,mn_dict)
-                if Net==0:
-                    Net = eval_mn(i,o,*args,default_dict)
-                    assert Net!=0,f"No such layer {net}"
-                name = args[0]
+                if net == '':
+                    Net = Adup()
+                else:
+                    # 获取参数
+                    args=get_args(net)
+                    Net = eval_mn(i,o,*args,mn_dict) # type: ignore
+                    if Net==0:
+                        Net = eval_mn(i,o,*args,default_dict) # type: ignore
+                        assert Net!=0,f"No such layer {net}"
+                    name = args[0]
             else:
                 try:
                     Net = net(i,o)
                 except:
                     Net = net
                 name = net.__name__ 
-            Net = FLOW(Net,i,o,net,mn_dict,in_dim)
+            Net = Adup(Net,i,o,net,mn_dict,in_dim) # type: ignore
             if i == 0: Nets.in_dim = Net.in_dim
-            Nets.add_module(f"{k}:{name}", Net.Net )
+            Nets.add_module(f"{k}:{name}", Net )
             i = o
     return Nets
 
-class Mix(FLOW):
-    def __init__(self,i=0,o_lists=[10,[32,32],1],net_lists=['dp_0.5',["fc",'bn','act','dp_0.5'],"fc"],mn_dict=mn_dict,in_dim=-1):
-        super(Mix,self).__init__()
-        self.i = i,
-        self.auto_i = (i == 0)
-        self.o = o_lists if isinstance(o_lists,int) else o_lists[-1],
-        self.o_list =  [o_lists] if isinstance(o_lists,int) else o_lists
-        self.net = [o_lists] if isinstance(net_lists,str) else net_lists
-        self.mn_dict = mn_dict
-        self.Net=layer(i,o_lists,net_lists,mn_dict,in_dim)
-        self.in_dim = self.Net.in_dim
-        
-    def forward(self,x,*args,**kwargs):
-        return self.Net(x,*args,**kwargs)
+X = Fn()

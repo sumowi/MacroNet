@@ -45,6 +45,8 @@ def SEQ(ord,*args,**kwargs):
         # 如果y的长度大于0，则返回y
         if len((y,))>0:
             return y
+    else:
+        return x
         
 # 定义函数LIC，参数ord，*args，**kwargs，返回值all_y
 # ord：字典，存储函数和参数
@@ -78,7 +80,8 @@ def LIC(ord,*args,**kwargs):
             all_y += [y]
         if len((all_y,))>0 :
             return all_y
-
+    else:
+        return x
 
 
 
@@ -108,17 +111,17 @@ class FuncModel(Module_base): # type: ignore
         # 将self.p赋值为self.pcall
         self.p = self.pcall
 
-    def __call__(self,*args,**kwargs):
-        '''
-        调用call函数，并打印出函数的参数和输出结果
-        '''
-        global is_pcall
-        if is_pcall:
-            print('@',self.__repr__().split('\n')[0],'>>\n   ', *args, **kwargs)
-        output = self.call(self._modules,*args,**kwargs)
-        if is_pcall:
-            print(f')>>', output)
-        return output
+    # def __call__(self,*args,**kwargs):
+    #     '''
+    #     调用call函数，并打印出函数的参数和输出结果
+    #     '''
+    #     global is_pcall
+    #     if is_pcall:
+    #         print('@',self.__repr__().split('\n')[0],'>>\n   ', *args, **kwargs)
+    #     output = self.call(self._modules,*args,**kwargs)
+    #     if is_pcall:
+    #         print(f')>>', output)
+    #     return output
     
     def pcall(self,*args,**kwargs):
         # 定义一个全局变量is_pcall，用于判断是否调用pcall函数
@@ -142,11 +145,13 @@ class FuncModel(Module_base): # type: ignore
         # 获取父类的__repr__方法
         main_str = super().__repr__()
         # 如果父类的__repr__方法以当前类的名称开头，则返回当前类的名称和父类的__repr__方法
-        if main_str.startswith(self.__class__.__name__):
+        # start_str = f"{self.__class__.__name__}"
+        start_str = 'Fn'
+        if main_str.startswith(start_str):
             return f"{get_name(self.call)}>"+main_str
         # 否则，返回当前类的名称和当前类的__repr__方法
         else:
-            lines = [self.__class__.__name__+'(']
+            lines = [start_str+'(']
             # 遍历当前类的_modules属性，获取每个模块的__repr__方法
             for key,func in self._modules.items():
                 _rerp_str = []
@@ -209,7 +214,16 @@ class FuncModel(Module_base): # type: ignore
             return copy.deepcopy(self)*other+other
     
     def forward(self,*args,**kwargs):
-        return self.__call__(*args,**kwargs)
+        '''
+        调用call函数，并打印出函数的参数和输出结果
+        '''
+        global is_pcall
+        if is_pcall:
+            print('@',self.__repr__().split('\n')[0],'>>\n   ', *args, **kwargs)
+        output = self.call(self._modules,*args,**kwargs)
+        if is_pcall:
+            print(f')>>', output)
+        return output
     
     @staticmethod
     def dup(func):
@@ -235,23 +249,18 @@ class dup(FuncModel):
         self._modules = OrderedDict([('0',func)])
         self.func = func
         
-    def __call__(self, *args, **kwargs):
+    def forward(self, *args, **kwargs):
         return self.func(*args, **kwargs)
         
     def __repr__(self):
         main_str=self.__class__.__name__
-        return f'@{main_str}:'+ str(repr(self._modules['0']) + f' *id:{id(self)}')
+        return f'@{main_str}:'+ str(get_name(self._modules['0']) + f' *id:{id(self)}')
            
 
 
     
 # 基础类
-Fn =  FuncModel
+fn =  FuncModel
 
 # 形式输入
-X =  FuncModel()
-
-# 修饰器
-# @Fn
-# @dup
-# @Fn.dup
+x =  FuncModel()
