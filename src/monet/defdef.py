@@ -170,7 +170,11 @@ class DefDefObj:
                 call = args[0]
                 assert isinstance(call, Callable), f"{call} is not a Callable"
             else:
-                return lambda _call : self.add(dict_or_func,_call)
+                def add_func(call):
+                    assert isinstance(call, Callable), f"{call} is not a Callable or is None"
+                    return self.add(dict_or_func, call)
+
+                return add_func
 
             if ddf.is_ddf(call):
                 return self.add(dict_or_func,call.func)

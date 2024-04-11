@@ -248,7 +248,7 @@ class FuncModel: # type: ignore
 
     @staticmethod
     def is_ddf(func):
-        return issubclass(func.__class__,(FuncModel,ddf))   # type: ignore
+        return issubclass(func.__class__,(ddf))   # type: ignore
 
     def __call__(self, *args, **kwargs) -> Any:
         return self.forward(*args, **kwargs)
