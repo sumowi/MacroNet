@@ -1,103 +1,4 @@
-在构建一个算法流程或者神经网络时，通常显得过于臃肿和复杂；为了描述清楚其中的逻辑与结构，通常还需要配以图形来进行解构。然而，实际上这可能把简单的事情复杂化，因此本框架旨在使得算法流或AI流更简洁明了与易于搭建。
-
-When constructing an algorithm flow or neural network, it often appears too cumbersome and complex; In order to describe the logic and structure clearly, it is usually necessary to use graphics for deconstruction. However, in reality, this may complicate simple things, so this framework aims to make algorithm or AI flows more concise, clear, and easy to build.
-
-# Core features：Construct function streams like writing formulas
-
-- 通过*和+两种运算符的重载，优化函数的连续执行；
-- 通过形式化字典，优化函数的参数传递；
-- 对pytorch和sklearn的常用函数进行了封装；
-- Optimize the continuous execution of functions by overloading the * and+operators;
-- Optimize the parameter transfer of functions through formal dictionaries;
-- Encapsulated the commonly used functions of pytorch and sklearn.
-
-# FunctionModel API
-
-## Basic usage
-
-基础用法为：<初始化算子><执行算符><执行对象>
-
-- 初始化算子：通过fn(operator)完成，operator默认为空
-- 执行算符：*表示迭代模式，+表示添加模式
-- 执行对象：单个对象或者对象列表(与operator迭代)
-
-| Write                        | Code                                                                                           | Function                                                                                                                                                                                                                                   |
-| :--------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| $F=F1F2···Fn$           | F = fn()*F1\*F2\*...*Fn                                                                        | 定义一个顺序迭代输出的函数组，F(x)等价于：<br />Define a set of sequentially executed functions, F(x) equivalent to:<br />F(x)=Fn(...F2(F1(x)))                                                                                            |
-| $F=(F1,F2,···,Fn)$      | F = fn()*(F1,F2,...,Fn)                                                                        | 定义一个顺序拼接输出的函数组，F(x)等价于：<br />F(x)=( F1(x), F2(x), ..., Fn(x) )                                                                                                                                                         |
-| $F=F1+F2+...+Fn$           | F = fn()+F1+F2+...+Fn                                                                          | 定义一个顺序添加输出的函数组，F(x)等价于：<br />F(x)=( *F1(x), *F2(x), ..., *Fn(x) )                                                                                                                                                       |
-|                              | **fn()中可以添加算子:**<br />'+' = 'add' = operator.add<br />'×' = 'mul' = operator.mul | **算子为字符串：'+'/'×'或者[`operator`](https://docs.python.org/zh-cn/3/library/operator.html#module-operator "operator: Functions corresponding to the standard operators.")库中的函数<br />算子为函数名：该函数的输入必须是两个参数** |
-| $F=+(F1,F2,···,Fn)$     | F = fn('+')\*(F1,F2,...,Fn)                                                                    | 定义一个顺序求和输出的函数组，F(x)等价于：<br />F(x)=F1(x)+F2(x)+...+Fn(x)                                                                                                                                                                 |
-| $F=×(F1,F2,···,Fn)$    | F = fn('×')\*(F1,F2,...,Fn)                                                                   | 定义一个顺序求积输出的函数组，F(x)等价于：<br />F(x)=F1(x)×F2(x)×...×Fn(x)                                                                                                                                                              |
-| $F = ＋( F1+F2+···+Fn)$ | F = fn('+')+(F1,F2,...,Fn)                                                                     | 定义一个顺序求和输出的函数组，F(x)等价于：<br />y = 0<br />for i in (\*F1(x),\*F2(x),...,\*Fn(x)):<br />    y = operator.add( y, i)                                                                                                    |
-| $F = ×( F1+F2+···+Fn)$ | F = fn('×')+(F1,F2,...,Fn)                                                                    | 定义一个顺序求和输出的函数组，F(x)等价于：<br />y = 1<br />for i in (\*F1(x),\*F2(x),...,\*Fn(x)):<br />    y = operator.mul( y, i)                                                                                                   |
-
-## Function Extend
-
-为了使算法或模型流更简洁，我们可以对每个组件定义缩写变量名，但是这无法简化参数的传递过程；为此我们通过了对象可扩展能力，实现通过字符串传递缩写的组件及其重要参数。
-
-To make the algorithm or model flow more concise, we can define abbreviated variable names for each component, but this cannot simplify the process of parameter transfer; For this purpose, we have achieved the ability of object scalability by passing abbreviations and their important parameters through strings.
-
-标准扩展中：执行对象可以是 <字符串形式执行对象> ，且可以在字符串中传递参数，通过形式字典完成
-
-形式字典定义方法：`"<name><num>`.``<str arg>_<value arg>" : lambda  *x,<strarg>,<valuearg> : <被形式化函数>(<传入参数>)``
-
-形式字典传参方法：`"<name><num>`.``<str arg>_<value arg>"``
-
-当返回值为None时，返回x; 当不为None时，返回实际值
-
-* 该用法默认使用默认定义的形式字典，支持传入自定义的形式字典
-* 扩展需返回一个实例化的对象或可执行的函数
-
-```python
-fn_extend={
-    "log": lambda *x,file='result':
-        print(x,file=open(f'{file}.log','a+')),
-    "m_abs": lambda *x,m_func='max':
-        eval(m_func)((abs(i) for i in x))
-}
-
-F=fn()*"log"
-a = F(1,2,3,{'a':2})
-print(a)
-F = fn()*"m_abs"
-a = F(1,-2,-3,m_func='max')
-print(a)
-
->>None
-3
-```
-
-## ModuleNet API
-
-```python
-Fc = lambda i,o : nn.Linear(i,o)
-Act = lambda i,o : nn.ReLU()
-F = mn.Fn()*Fc(10,16)*Act()*Fc(16,8)*Act()*Fc(8,1)
-F = mn.Mix([10,16,8,1])*(Fc,Act,Fc,Act,Fc)
-F = mn.Mix([10,[16,8],1])*([Fc,Act],Fc)
-F = mn.Mix([10,[16,8],1])*(["Fc","Act"],"Fc")
-```
-
-## NeuralNetModel extend
-
-进阶扩展中，在形式字典中可以传入自动化参数，自动化参数由上一执行函数完成后输出的额外参数：
-
-定义方法为： `"<name><num>`.``<strarg>_<valuearg>" : lambda  <autoarg>,<num>,<strarg>,<valuearg> : <被形式化函数>(<传入参数>)``
-
-```python
-mn_extend = {
-    'Fc': lambda i,o,bias=True: # 全连接层
-        nn.Linear(in_features = i, out_features = o, bias = bias),
-    'BFc': lambda i,o,bias=True: # 双线性层
-        nn.Bilinear(in1_features=i[0],in2_features=i[1],out_features=o,bias=bias),
-    'Fl': lambda i,o,start_dim=1,end_dim=-1:
-	nn.Flatten(start_dim=start_dim, end_dim=end_dim),
-
-}
-```
-
-# MoNet API
+# MoNet
 
 一个新型神经网络AI表述与实现框架，基于pytorch，scikit-learn，skorch，实现网络的公式化表达与构建。网络列表如下：
 
@@ -204,6 +105,7 @@ id((A&A)),id((A&A).Net[0]),id((A&A).Net[1]) # 深拷贝
 >> (3079366077712, 3077652744320, 3077652747920)
 ```
 
+
 - 设置输入维度为0，用set_i()或在首次forward时自适应调整顶层输入形状
 
 ```python
@@ -246,11 +148,3 @@ F.set_i(1,3,6,6)(torch.randn(1,3,6,6)),F
 # 下一步计划
 
 - 更广泛的流式编程？
-
-fn_extend={
-
-    "print": lambda *args,file='result':
-
-    print(args,file=open(f'{file}.log','a+'))
-
-}

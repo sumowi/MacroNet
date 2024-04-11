@@ -1,15 +1,25 @@
 [project]
 name = "MoNet"
 version = "0.1.0"
-description = ""
+description = "Default template for PDM package"
 authors = [
     {name = "hn3ng4n@163.com", email = "hn3ng4n@qq.com"},
+    {name = "yf_ming", email = "yf_ming@csu.edu.cn"},
+    {name = "'明泳帆'", email = "'yf_ming@csu.edu.cn'"},
 ]
 dependencies = []
-requires-python = ">=3.10"
+requires-python = "==3.10.*"
 readme = "README.md"
 license = {text = "MIT"}
 
-[build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
+[tool.pdm]
+distribution = true
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "ipykernel>=6.29.4",
+    "torch==2.2.1",
+    "numpy>=1.26.4",
+]
+[tool.pdm.resolution]
+respect-source-order = true
