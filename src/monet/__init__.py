@@ -1,5 +1,5 @@
 from typing import Any, Callable, overload
-from monet.example import parabolaA_B_C,func_pla,ddf_w1_w2_b_pla,pla_Type   # noqa: F401
+from monet.example import parabolaA_B_C,func_pla,ddf_w1_w2_b_pla,pla_Type,pla2_Type   # noqa: F401
 from monet.example import funcspace_dict_full,funcspace_dict_name,funcspace_dict_value # noqa: F401
 
 try:
@@ -14,23 +14,25 @@ class MoNetInitial:
         >>> from monet import MoNetInitial
         >>> import torch.nn as nn
         >>> m = MoNetInitial(nn)
-        >>> m.f
-        seq>Fn()
-        >>> m.f(1,2,3)
-        [1, 2, 3]
+        >>> m.Linear(10,1).name
+        '@ddf:Linear(in_features=10, out_features=1, bias=True)'
+        >>> m.ReLU().name
+        '@ddf:ReLU()'
         """
         from monet.defdef import DefDefObj
         from monet._monet import Layer
         from typing import OrderedDict
 
         self.funcspace = OrderedDict()
-        self.__funcspace__ = self
         self.namespace = OrderedDict()
+        self.__funcspace__ = self
         self.defdef = DefDefObj(spaceobj=self)
+
         if isinstance(funcspace,dict):
             self.defdef.add(funcspace)
         else:
             self.__funcspace__ = funcspace
+
         self.f = self.defdef.get()
         self.find = self.defdef.find
         self.Layer = Layer
@@ -40,6 +42,8 @@ class MoNetInitial:
     def ddf(self,name:str,func:Callable) -> Callable:...
     @overload
     def ddf(self,dict:dict) -> Callable:...
+    @overload
+    def ddf(self,func:Callable) -> Callable:...
     def ddf(self,*args,**kwargs):
         """defdef a function,which return a callable function.
         >>> from monet import MoNetInitial
@@ -97,8 +101,8 @@ class MoNetInitial:
         >>> from monet import MoNetInitial,dict_slice
         >>> from monet.torch_ddf import torch_dict
         >>> m = MoNetInitial(dict_slice(torch_dict,0,3))
-        >>> m.net(10,1,"fc")[0].Net
-        Linear(in_features=10, out_features=1, bias=True)
+        >>> m.net(10,1,"fc")[0].name
+        '@ddf:Linear(in_features=10, out_features=1, bias=True)'
         """
         return self.Layer(*args,**kwargs,get=self.__getattr__,print_=False)[1]
 
@@ -120,7 +124,15 @@ class MoNetInitial:
         >>> (AND+(OR,NAND))([1,1])
         [True, True, False]
         """
-        return self.defdef.get(name)
+        try:
+            return self.defdef.get(name)
+        except Exception:
+            if name not in self.funcspace:
+                func = eval(f"self.__funcspace__.{name}")
+                if isinstance(func,Callable):
+                    return self.ddf(name,func)
+            else:
+                raise AttributeError(f"{name} not found in funcspace")
 
     def __setattr__(self, name: str, value: Any) -> None:
         """call a function from defdef functionspace.
@@ -135,11 +147,11 @@ class MoNetInitial:
         if isinstance(value,Callable) and not name.startswith("__"):
             if name not in ['defdef','Layer','f','find','ddf']:
                 if name not in self.funcspace:
-                    value = self.ddf(name,value)
+                    value = self.defdef.add(name,value)
                     self.__setattr__(name,value)
 
-    def __getitem__(self,i):
-        return self.__getattr__(i)
+    def __getitem__(self,name):
+        return self.__getattr__(name)
 
     def __setitem__(self,name,value):
         """call a function from defdef functionspace.
@@ -154,6 +166,29 @@ class MoNetInitial:
         """
         assert isinstance(value,Callable), f"{value} is not a Callable"
         self.ddf(name,value)
+
+    def __call__(self, arg1=None, arg2=None,*args) -> Any:
+        """call a function from defdef functionspace.
+        >>> from monet import MoNetInitial,torch_dict,pla2_Type
+        >>> m = MoNetInitial(torch_dict)
+        >>> m(pla2_Type).name
+        '@ddf:pla2_Type'
+        >>> m("fc").name
+        '@ddf:fc'
+        >>> m(10,[10,20,10],[["fc","act"]]).name
+        {'seq': (10, [10, 20, 10], [['fc', 'act'], ['fc', 'act'], ['fc', 'act']])}
+        """
+        if arg1 is None:
+            return self.f
+        if isinstance(arg1,Callable):
+            return self.ddf(arg1)
+        if isinstance(arg1,str):
+            if arg2 is None:
+                return self.__getattr__(arg1)
+            elif isinstance(arg2,Callable):
+                return self.ddf(arg1,arg2)
+        else:
+            return self.net(arg1,arg2,*args)
 
 
 def dict_slice(dictionary, start, stop):

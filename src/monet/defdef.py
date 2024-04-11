@@ -249,6 +249,12 @@ class DefDefObj:
         {'A': 1, 'B': 3, 'C': 3}
         >>> DefDefObj.get_namespace_kwargs({"A":1,"B":2,"C":3},["parabola","_","_"],"parabola_3")
         {'A': 1, 'B': 3, 'C': 3}
+        >>> from monet import MoNetInitial, pla2_Type
+        >>> m = MoNetInitial()
+        >>> m.ddf(pla2_Type).name
+        '@ddf:pla2_Type'
+        >>> m["pla2_AND"].initkwargs
+        {'Type': 'AND'}
         """
         kwargs = {}
 
@@ -403,8 +409,6 @@ class DefDefObj:
         if isinstance(func, Callable):
             return self.add(func)
         return self.get(func)
-
-
 
 # %%
 if __name__ == "__main__":

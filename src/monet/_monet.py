@@ -1,3 +1,21 @@
+"""
+>>> o, Net = Layer(10,[10,20,10],[["fc","act"]])
+10 seq [10, 20, 10] [['fc', 'act'], ['fc', 'act'], ['fc', 'act']]
+┗━ 10 -> seq : 10 ['fc', 'act']
+   ┗━ 10 -> net : 10 fc
+   ┗━ 10 -> net : 10 act
+   -> 10
+┗━ 10 -> seq : 20 ['fc', 'act']
+   ┗━ 10 -> net : 20 fc
+   ┗━ 20 -> net : 20 act
+   -> 20
+┗━ 20 -> seq : 10 ['fc', 'act']
+   ┗━ 20 -> net : 10 fc
+   ┗━ 10 -> net : 10 act
+   -> 10
+-> 10
+"""
+
 from typing import Callable, OrderedDict
 from monet.flowfunc import FuncModel as Fn
 from monet.flowfunc import ddf
@@ -45,12 +63,12 @@ def get_args(net="fc_1"):
 
 def mn_get(func_name):
     """
-    >>> mn_get("fc")(10,1)
-    Linear(in_features=10, out_features=1, bias=True)
-    >>> mn_get("fc_0")(10,1)
-    Linear(in_features=10, out_features=1, bias=False)
-    >>> mn_get("bfc")((10,20),1)
-    Bilinear(in1_features=10, in2_features=20, out_features=1, bias=True)
+    >>> mn_get("fc")(10,1).name
+    '@ddf:Linear(in_features=10, out_features=1, bias=True)'
+    >>> mn_get("fc_0")(10,1).name
+    '@ddf:Linear(in_features=10, out_features=1, bias=False)'
+    >>> mn_get("bfc")((10,20),1).name
+    '@ddf:Bilinear(in1_features=10, in2_features=20, out_features=1, bias=True)'
     """
     from monet.torch_ddf import torch_dict
     name,num,args_str,args = get_args(func_name)
@@ -91,7 +109,10 @@ class monet(Fn):
         self.net = net
         self.mn_get = mn_get
         self.in_dim = 1 if net.startswith("cv") and in_dim==-1 else in_dim
-
+        if Fn.is_ddf(module):
+            self.initkwargs = module.initkwargs
+            self.name = module.name
+            module = module.func
         self._modules = OrderedDict([('0',module)])
         self.Net = module
         self.func = module
@@ -104,14 +125,20 @@ class monet(Fn):
             self.Net = Nets.Net
             if hasattr(x,"device") and hasattr(self.Net,"to"):
                 self.Net.to(x.device)
-        return super().forward(x,*args,**kwargs)
+        if kwargs == {}:
+            kwargs = self.initkwargs
+        else:
+            kwargs.update(self.initkwargs)
+        res = super().forward(x,*args,**kwargs)
+        if isinstance(res,Callable):
+            return ddf(res)
 
     def __repr__(self):
         main_str=self.__class__.__name__
         return f'@{main_str}:'+ str(repr(self.Net) + f' *id:{id(self)}')
 
 
-def Layer(i: int | str | list=0,
+def Layer(i: int | str | list | tuple=0,
           o:int | list[int]=1,
           net:str | list[str,Callable] ="fc_1",
           in_dim=-1,
@@ -170,7 +197,7 @@ def Layer(i: int | str | list=0,
        -> (10, 20)
     -> (10, 20)
     """
-    if isinstance(i,(str,list)) :
+    if isinstance(i,(str,list)):
         net = i
         i = 0
 
@@ -180,7 +207,6 @@ def Layer(i: int | str | list=0,
         mode = "lic"
     else:
         mode = "seq"
-    Nets = Fn(call=mode)
 
     net_list = net if isinstance(net,list) else list(net) if isinstance(net,tuple) and not isinstance(o,(list)) else [net]
     o_list = o if isinstance(o,list) else list(o) if isinstance(o,tuple) and not isinstance(net,(list)) else [o]
@@ -189,8 +215,8 @@ def Layer(i: int | str | list=0,
     net_list.extend([net_list[-1]]*(max_len-len(net_list)))
     o_list.extend([o_list[-1]]*(max_len-len(o_list)))
 
-    # o in tuple means Ndim output
-    # net in tuple means lic output
+    net_name = {mode:(i,o_list,net_list)}
+    Nets = Fn(call=mode,name = net_name)
     if gap == 0 and print_:
         print(i,mode,o_list,net_list)
     next_i_list=[]
@@ -208,21 +234,16 @@ def Layer(i: int | str | list=0,
             if print_:
                 print("   "*(gap)+"┗━ "+str(i),"->", "net :", o, net)
 
+        if isinstance(o,(list,tuple)) or isinstance(net,(list,tuple)):
+            next_i, module = Layer(i,o,net,in_dim,get,gap+1,print_)
+            i = next_i if mode == "seq" else i
+            next_i_list = next_i_list+next_i if mode == "lic" else next_i
         if isinstance(o,(list,tuple)) and isinstance(net,(list,tuple)):
-            next_i, module = Layer(i,o,net,in_dim,get,gap+1,print_)
             Nets.add_module(f"{k}:mix",module)
-            i = next_i if mode == "seq" else i
-            next_i_list = next_i_list+next_i if mode == "lic" else next_i
         elif isinstance(net,(list,tuple)):
-            next_i, module = Layer(i,o,net,in_dim,get,gap+1,print_)
             Nets.add_module(f"cell-{k}",module)
-            i = next_i if mode == "seq" else i
-            next_i_list = next_i_list+next_i if mode == "lic" else next_i
         elif isinstance(o,(list,tuple)):
-            next_i, module = Layer(i,o,net,in_dim,get,gap+1,print_)
             Nets.add_module(f"{k}:{net} x {len(module)}",module)
-            i = next_i if mode == "seq" else i
-            next_i_list = next_i_list+next_i if mode == "lic" else next_i
         else:
             assert isinstance(net,(str,Callable)),f"{net} is not a string or Callable"
             name = ''
@@ -253,9 +274,13 @@ def Layer(i: int | str | list=0,
             else:
                 i = i
                 next_i_list += [o]
+    if hasattr(next_i_list,'__iter__'):
+        next_i = tuple(next_i_list) if len(next_i_list) > 1 else next_i_list[0]
+    else:
+        next_i = (next_i_list)
     if print_:
-        print("   "*gap+"->",tuple(next_i_list) if len(next_i_list) > 1 else next_i_list[0])
-    return tuple(next_i_list), Nets
+        print("   "*gap+"->",next_i)
+    return next_i, Nets
 
 X = Fn()
 

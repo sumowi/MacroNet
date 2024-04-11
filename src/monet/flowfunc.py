@@ -91,7 +91,7 @@ class FuncModel: # type: ignore
     """
 
     # Define an initializer function, with args as a list and call as a function or string
-    def __init__(self, args=[], call: str | Callable = 'seq'):
+    def __init__(self, args=[], call: str | Callable = 'seq', name = ""):
         # Call the initializer function of the parent class
         super().__init__()
         # If args is not an iterable, convert it to a list
@@ -114,6 +114,8 @@ class FuncModel: # type: ignore
                     self._modules[str(i)] = self.ddf(arg)
         # Assign self.p to self.pcall
         self.p = self.pcall
+        self.func = self
+        self.name = name if name != "" else str(call)
     def add_module(self, name, module):
         self._modules[name] = module
     def pcall(self,*args,**kwargs):
@@ -275,7 +277,10 @@ class ddf(FuncModel):
             kwargs = self.initkwargs
         else:
             kwargs.update(self.initkwargs)
-        return self.func(*args, **kwargs)
+        res = self.func(*args, **kwargs)
+        if isinstance(res,Callable):
+            return ddf(res)
+        return res
 
     def __repr__(self):
         return self.name + self.id
