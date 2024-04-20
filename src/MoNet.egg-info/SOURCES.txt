@@ -3,6 +3,7 @@ pyproject.toml
 src/MoNet.egg-info/PKG-INFO
 src/MoNet.egg-info/SOURCES.txt
 src/MoNet.egg-info/dependency_links.txt
+src/MoNet.egg-info/requires.txt
 src/MoNet.egg-info/top_level.txt
 src/monet/__init__.py
 src/monet/_monet.py

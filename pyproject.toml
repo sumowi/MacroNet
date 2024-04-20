@@ -7,7 +7,9 @@ authors = [
     {name = "yf_ming", email = "yf_ming@csu.edu.cn"},
     {name = "'明泳帆'", email = "'yf_ming@csu.edu.cn'"},
 ]
-dependencies = []
+dependencies = [
+    "skorch>=0.15.0",
+]
 requires-python = "==3.10.*"
 readme = "README.md"
 license = {text = "MIT"}

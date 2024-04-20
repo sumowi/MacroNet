@@ -1,9 +1,18 @@
 """
 This function defines the classes that enable any function to perform
-multiplication and division abilities
+multiplocation and division abilities
 """
 from collections import OrderedDict
+from copy import deepcopy
 from typing import Any, Callable
+from collections.abc import Sized
+import inspect
+
+try:
+    from torch.nn import Module as Base
+except Exception:
+    Base = object
+
 # Define a global variable IS_ PCALL, used to determine whether to call
 # the pcall function to output the input-output values for each step
 IS_PCALL = False
@@ -29,19 +38,18 @@ def seq(func_ord,*args,**kwargs):
     x = [] if len(args) == 0 else [*args]
     x+= [] if len(kwargs) == 0 else [kwargs]
     if len(func_ord) > 0:
-        for i,func in func_ord.items():
+        if IS_PCALL:
+            print("   ", end="")
+        for n,(i,func) in enumerate(func_ord.items()):
             y = func(*x)
-            # 如果mstr不等于')'且IS_PCALL为真，则打印出i，mstr，x和y
-            if (mstr:=get_name(func).split('\n')[-1]) != ')' and IS_PCALL:
-                print(f" ({i}): "+mstr+f"\n  $ {x} >>\n  ==", y )
-            # 将y赋值给x
+            if (mstr:=func.name) and IS_PCALL:
+                print(f"   ({i}): "+mstr+f"\n    ┗━ {x} >>\n    ==", y )
             x = (y,)
-        # 如果y的长度大于0，则返回y
         if len((y,))>0:
             return y
     return x
 
-def lic(func_ord,*args,**kwargs):
+def loc_base(func_ord,*args,**kwargs):
     '''Execute func_ord in parallel, each function uses the same input, and finally
     concatenate all the outputs into a list
     '''
@@ -49,33 +57,28 @@ def lic(func_ord,*args,**kwargs):
     x+= [] if len(kwargs) == 0 else [kwargs]
     all_y = []
     if len(func_ord) > 0:
+        if IS_PCALL:
+            print("   ", end="")
         for i,func in func_ord.items():
             y = func(*x)
-            if (mstr:=get_name(func).split('\n')[-1]) != ')' and IS_PCALL:
-                print(f" ({i}): "+mstr+f"\n  $ {x} >>\n  ==", y )
+            if (mstr:=func.name) and IS_PCALL:
+                print(f"   ({i}): "+mstr+f"\n    ┗━ {x} >>\n    ==", y )
             all_y += [y]
-        if len((all_y,))>0 :
-            return all_y
+        return all_y
     return x
 
-def cat(func_ord,*args,**kwargs):
+def loc(func_ord,*args,**kwargs):
     '''Execute func_ord in parallel, each function uses the same input, and finally
     concatenate all the outputs into a list
     '''
-    x = [] if len(args) == 0 else [*args]
-    x+= [] if len(kwargs) == 0 else [kwargs]
-    all_y = []
-    if len(func_ord) > 0:
-        for i,func in func_ord.items():
-            y = func(*x)
-            if (mstr:=get_name(func).split('\n')[-1]) != ')' and IS_PCALL:
-                print(f" ({i}): "+mstr+f"\n  $ {x} >>\n  ==", y )
-            all_y += [*y] if hasattr(y,'__iter__') else [y]
-        if len((all_y,))>0 :
+    all_y = loc_base(func_ord,*args,**kwargs)
+    for i in all_y:
+        if not isinstance(i,Callable):
             return all_y
-    return x
+    return FuncModel(all_y,call="loc")
 
-class FuncModel: # type: ignore
+
+class FuncModel(Base): # type: ignore
     """
     >>> F = FuncModel(max)*FuncModel(abs)
     >>> F(-1,-2,-3,-4,-5)
@@ -95,29 +98,44 @@ class FuncModel: # type: ignore
         # Call the initializer function of the parent class
         super().__init__()
         # If args is not an iterable, convert it to a list
-        args = [args] if not hasattr(args, '__iter__') else args
+        args = [args] if not isinstance(args,Sized) else args
         # Initialize an ordered dictionary
         self._modules = OrderedDict()
         self.call = eval(call) if isinstance(call, str) else call
+        self.name = name if name != "" else str(self.call)
         # Iterate over each element in args
         for i, arg in enumerate(args):
             # If arg is a Module or ddf object
-            if self.is_ddf(arg):
-                # Add the first element of arg to the ordered dictionary, if arg has only one element and its representation has more than one line, add the first element of arg to the ordered dictionary, otherwise add arg to the ordered dictionary
-                self._modules[str(i)] = [*arg][0] if repr(arg).count('\n') != 0 and len(arg) == 1 else arg
+            if self.is_ddf_funcmodel(arg):
+                if self.is_funcmodel(arg.func):
+                    self._modules[str(i)] = arg.func[0] if len(arg.func) == 1 else arg.func
+                elif not self.is_ddf(arg):
+                    if arg.name not in ['loc','seq']:
+                        self._modules[str(i)+":"+arg.name] = arg[0] if len(arg) == 1 else arg
+                        if len(arg) == 1:
+                            self[i].__name__ = arg.name
+                    else:
+                        self._modules[str(i)] = arg[0] if len(arg) == 1 else arg
+                else:
+                    if arg.__name__ != str(get_name(arg.func)):
+                        self._modules[str(i)+":"+arg.__name__] = arg
+                    else:
+                        self._modules[str(i)] = arg
             # If arg is not a Module or ddf object
             else:
-                # Copy arg and add it to the ordered dictionary
-                if hasattr(arg, '__len__'):
-                    self._modules[str(i)] = FuncModel(arg,lic)
+                # Add it to the ordered dictionary
+                if isinstance(arg, Sized):
+                    self._modules[str(i)] = FuncModel(arg, call=call)
                 else:
                     self._modules[str(i)] = self.ddf(arg)
         # Assign self.p to self.pcall
         self.p = self.pcall
-        self.func = self
-        self.name = name if name != "" else str(call)
+        self.func = self.__call__
+        self.id =f' *id:{id(self)}'
+
     def add_module(self, name, module):
         self._modules[name] = module
+
     def pcall(self,*args,**kwargs):
         # Define a global variable IS_PCALL to determine if pcall function is called
         global IS_PCALL
@@ -142,11 +160,11 @@ class FuncModel: # type: ignore
     def __repr__(self):
         # Get the __repr__ method of the parent class
         main_str = super().__repr__()
-        # If the __repr__ method of the parent class starts with the name of the current class, return the name of the current class and the __repr__ method of the parent class
+        # # If the __repr__ method of the parent class starts with the name of the current class, return the name of the current class and the __repr__ method of the parent class
         start_str = 'Fn'
         if main_str.startswith(start_str):
             return f"{get_name(self.call)}>{main_str}"
-        # Otherwise, return the name of the current class and the __repr__ method of the current class
+        # # Otherwise, return the name of the current class and the __repr__ method of the current class
         else:
             lines = [start_str + '(']
             # Iterate over the _modules attribute of the current class to get the __repr__ method of each module
@@ -165,72 +183,67 @@ class FuncModel: # type: ignore
         return len(self._modules)
 
     def __add__(self,other):
-        '''+ means seq call'''
+        '''+ means loc call'''
         if isinstance(other,int):
-            return self+[FuncModel()]*other if other !=1 else self+[FuncModel()]
+            return FuncModel([self]+[FuncModel()]*other,call=loc,name=self.name+"x"+str(other))
         else:
             if len(self) == 1:
-                nn_list = [self]
-            elif self.call == cat:
+                nn_list = [*self] # not change
+            elif self.call == loc:
                 nn_list = [*self]
             else:
                 nn_list = [self]
 
-            if hasattr(other,'__len__'):
-                if len(other) == 1:
-                    nn_list += [other]
-                elif self.is_ddf(other):
-                    if other.call == lic:
-                        nn_list += [*other]
-                    else:
+            if isinstance(other,Sized):
+                if len(other) == 0:
                         nn_list += [other]
+                elif self.is_ddf_funcmodel(other):
+                    nn_list += [other]
                 else:
-                    nn_list += [FuncModel(other,call=lic)]
+                    nn_list += [FuncModel(other,call=loc,name=self.name)]
             else:
                 nn_list += [other]
-        return FuncModel(nn_list,call=cat)
-
-    def __and__(self,other):
-        """ & means lic call with deepcopy"""
-        import copy
-        if isinstance(other,int):
-            return FuncModel([copy.deepcopy(self) for i in range(other)],call=lic)+1 if other !=1 else copy.deepcopy(self)+1
-        else:
-            return copy.deepcopy(self)*other+other
+        return FuncModel(nn_list,call=loc,name=self.name)
 
     def __mul__(self,other):
         '''* means seq call'''
         if isinstance(other,int):
-            return FuncModel([self]*other) if other !=1 else self
+            return FuncModel([~self for i in range(other)],call=loc,name=self.name+"x"+str(other)) if other !=1 else ~self
         else:
             if len(self) == 1:
-                nn_list = [self]
+                nn_list = [*self]
             elif self.call == seq:
                 nn_list = [*self]
             else:
                 nn_list = [self]
 
-            if hasattr(other,'__len__'):
-                if len(other) == 1:
+            if isinstance(other,Sized):
+                if len(other) == 0:
                     nn_list += [other]
-                elif self.is_ddf(other):
-                    if other.call == seq:
-                        nn_list += [*other]
-                    else:
-                        nn_list += [other]
+                elif self.is_ddf_funcmodel(other):
+                    nn_list += [other]
                 else:
-                    nn_list += [FuncModel(other,call=lic)]
+                    nn_list += [FuncModel(other,call=loc,name=self.name)]
             else:
                 nn_list += [other]
-        return FuncModel(nn_list,call=seq)
+        return FuncModel(nn_list,call=seq,name=self.name)
 
     def __pow__(self,other):
-        '''*** means seq call with deepcopy'''
+        '''** means seq call with deepcopy'''
         import copy
-        if isinstance(other,int):
-            return FuncModel([copy.deepcopy(self) for i in range(other)],call=seq) if other !=1 else copy.deepcopy(self)
+        if isinstance(other,int) and other > 0:
+            return FuncModel([~self for i in range(other)],call=seq) if other !=1 else ~self
         else:
-            return copy.deepcopy(self)*other
+            raise ValueError('** must with a int number > 0')
+
+    def __invert__(self):
+        """
+        >>> F = FuncModel(max)
+        >>> (~F).id == F.id
+        True
+        """
+        import copy
+        return copy.deepcopy(self)
 
     def forward(self,*args,**kwargs):
         '''
@@ -238,7 +251,7 @@ class FuncModel: # type: ignore
         '''
         global IS_PCALL
         if IS_PCALL:
-            print('@',self.__repr__().split('\n')[0],'>>\n   ', *args, **kwargs)
+            print('@',self.__repr__().split('\n')[0],'>> ')
         output = self.call(self._modules,*args,**kwargs)
         if IS_PCALL:
             print(')>>', output)
@@ -250,10 +263,19 @@ class FuncModel: # type: ignore
 
     @staticmethod
     def is_ddf(func):
-        return issubclass(func.__class__,(ddf))   # type: ignore
+        return issubclass(func.__class__,(ddf))
+    @staticmethod
+    def is_funcmodel(func):
+        return issubclass(func.__class__,(FuncModel))
+    @staticmethod
+    def is_ddf_funcmodel(func):
+        return issubclass(func.__class__,(FuncModel,ddf))
 
-    def __call__(self, *args, **kwargs) -> Any:
+    def __call__(self,*args, **kwargs) -> Any:
+        if len(self._modules)==0 and isinstance(args[0],str) and len(args) == 1 and len(kwargs) == 0:
+            return FuncModel(name=args[0])
         return self.forward(*args, **kwargs)
+
 
 class ddf(FuncModel):
     '''Add the ability of flow passing and formulaic expression to any function
@@ -264,12 +286,14 @@ class ddf(FuncModel):
     '''
     def __init__(self,func,name=None,initkwargs={}):
         super().__init__()
-
-        self._modules = OrderedDict([('0',func)])
         self.func = func
         self.initkwargs = initkwargs
-        self.__name__=str(get_name(self._modules['0'])) if name is None else str(name)
-        self.name=f'@{self.__class__.__name__}:'+self.__name__
+        self.__name__=str(get_name(self.func)) if name is None else str(name)
+        if (str_func:=str(self.func)).startswith("<function <lambda>"):
+            signature = inspect.signature(self.func)
+            self.name = f'@{self.__class__.__name__}:'+f"{self.func.__qualname__}{signature}>"
+        else:
+            self.name=f'@{self.__class__.__name__}:'+str_func
         self.id =f' *id:{id(self)}'
 
     def forward(self, *args, **kwargs):
@@ -283,7 +307,8 @@ class ddf(FuncModel):
         return res
 
     def __repr__(self):
-        return self.name + self.id
+        self.func_id =f' *id:{id(self.func)}'
+        return self.name + self.func_id
 
 if __name__ == "__main__":
     import doctest

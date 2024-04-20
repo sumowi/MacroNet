@@ -6,6 +6,7 @@ Author-email: "hn3ng4n@163.com" <hn3ng4n@qq.com>, yf_ming <yf_ming@csu.edu.cn>, 
 License: MIT
 Requires-Python: ==3.10.*
 Description-Content-Type: text/markdown
+Requires-Dist: skorch>=0.15.0
 
 在构建一个算法流程或者神经网络时，通常显得过于臃肿和复杂；为了描述清楚其中的逻辑与结构，通常还需要配以图形来进行解构。然而，实际上这可能把简单的事情复杂化，因此本框架旨在使得算法流或AI流更简洁明了与易于搭建。
 

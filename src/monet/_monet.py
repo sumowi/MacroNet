@@ -164,12 +164,12 @@ def Layer(i: int | str | list | tuple=0,
     ┗━ 10 -> net : 10 act
     -> 10
     >>> o, Net = Layer(10,(10,20),"fc")
-    10 lic [10, 20] ['fc', 'fc']
+    10 loc [10, 20] ['fc', 'fc']
     ┗━ 10 -> net : 10 fc
     ┗━ 10 -> net : 20 fc
     -> (10, 20)
     >>> o, Net = Layer(10,10,("fc","fc"))
-    10 lic [10, 10] ['fc', 'fc']
+    10 loc [10, 10] ['fc', 'fc']
     ┗━ 10 -> net : 10 fc
     ┗━ 10 -> net : 10 fc
     -> (10, 10)
@@ -179,7 +179,7 @@ def Layer(i: int | str | list | tuple=0,
     -> 1
     >>> o, Net = Layer(10,[(10,20),1],["fc","bfc"])
     10 seq [(10, 20), 1] ['fc', 'bfc']
-    ┗━ 10 -> lic : (10, 20) fc
+    ┗━ 10 -> loc : (10, 20) fc
        ┗━ 10 -> net : 10 fc
        ┗━ 10 -> net : 20 fc
        -> (10, 20)
@@ -187,11 +187,11 @@ def Layer(i: int | str | list | tuple=0,
     -> 1
     >>> o, Net = Layer((10,20),(10,20),["bfc","bfc"])
     (10, 20) seq [(10, 20), (10, 20)] ['bfc', 'bfc']
-    ┗━ (10, 20) -> lic : (10, 20) bfc
+    ┗━ (10, 20) -> loc : (10, 20) bfc
        ┗━ (10, 20) -> net : 10 bfc
        ┗━ (10, 20) -> net : 20 bfc
        -> (10, 20)
-    ┗━ (10, 20) -> lic : (10, 20) bfc
+    ┗━ (10, 20) -> loc : (10, 20) bfc
        ┗━ (10, 20) -> net : 10 bfc
        ┗━ (10, 20) -> net : 20 bfc
        -> (10, 20)
@@ -202,9 +202,9 @@ def Layer(i: int | str | list | tuple=0,
         i = 0
 
     if isinstance(o,(tuple))  and not isinstance(net,(list)):
-        mode = "lic"
+        mode = "loc"
     elif isinstance(net,(tuple)) and not isinstance(o,(list)):
-        mode = "lic"
+        mode = "loc"
     else:
         mode = "seq"
 
@@ -222,9 +222,9 @@ def Layer(i: int | str | list | tuple=0,
     next_i_list=[]
     for k,(o,net) in enumerate(zip(o_list , net_list)): # type: ignore
         if isinstance(o,(tuple))  and not isinstance(net,(list)):
-            cmode = "lic"
+            cmode = "loc"
         elif isinstance(net,(tuple)) and not isinstance(o,(list)):
-            cmode = "lic"
+            cmode = "loc"
         else:
             cmode = "seq"
         if isinstance(o,(list,tuple)) or isinstance(net,(list,tuple)):
@@ -237,7 +237,7 @@ def Layer(i: int | str | list | tuple=0,
         if isinstance(o,(list,tuple)) or isinstance(net,(list,tuple)):
             next_i, module = Layer(i,o,net,in_dim,get,gap+1,print_)
             i = next_i if mode == "seq" else i
-            next_i_list = next_i_list+next_i if mode == "lic" else next_i
+            next_i_list = next_i_list+next_i if mode == "loc" else next_i
         if isinstance(o,(list,tuple)) and isinstance(net,(list,tuple)):
             Nets.add_module(f"{k}:mix",module)
         elif isinstance(net,(list,tuple)):

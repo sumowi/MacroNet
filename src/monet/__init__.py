@@ -25,7 +25,7 @@ class MoNetInitial:
 
         self.funcspace = OrderedDict()
         self.namespace = OrderedDict()
-        self.__funcspace__ = self
+        self.__funcspace__ = None
         self.defdef = DefDefObj(spaceobj=self)
 
         if isinstance(funcspace,dict):
@@ -82,10 +82,12 @@ class MoNetInitial:
         >>> XOR =(AND+OR)*(NAND+OR)*NAND
         >>> XOR([1,1]),XOR([0,0]),XOR([0,1]),XOR([1,0])
         (True, True, False, False)
-        >>> (m.f*(AND,(OR,NAND)))([1,1])
-        [True, [True, False]]
-        >>> (AND+(OR,NAND))([1,1])
-        [True, True, False]
+        >>> (m.f*((AND,NAND),(OR,NAND)))([1,1])
+        [[True, False], [True, False]]
+        >>> (m.f*(AND,NAND)&(OR,NAND))([1,1])
+        [True, False, True, False]
+        >>> (m.f*(AND,NAND)+(OR,NAND))([1,1])
+        [[True, True], [False, False]]
         """
         print(self.defdef.find(func_name))
         return self.defdef.get(func_name)
@@ -122,12 +124,12 @@ class MoNetInitial:
         >>> (m.f*(AND,(OR,NAND)))([1,1])
         [True, [True, False]]
         >>> (AND+(OR,NAND))([1,1])
-        [True, True, False]
+        [[True, True], [False]]
         """
         try:
             return self.defdef.get(name)
         except Exception:
-            if name not in self.funcspace:
+            if name not in self.funcspace and self.__funcspace__ is not None:
                 func = eval(f"self.__funcspace__.{name}")
                 if isinstance(func,Callable):
                     return self.ddf(name,func)

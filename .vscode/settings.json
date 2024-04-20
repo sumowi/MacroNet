@@ -26,5 +26,6 @@
         "*.conf": "nginx",
         "*.service": "jinja-cisco",
         "plyconfig.json": "jsonc"
-    }
+    },
+    "python.analysis.typeCheckingMode": "off"
 }
