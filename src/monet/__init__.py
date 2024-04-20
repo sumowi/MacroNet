@@ -87,7 +87,7 @@ class MoNetInitial:
         >>> (m.f*(AND,NAND)&(OR,NAND))([1,1])
         [True, False, True, False]
         >>> (m.f*(AND,NAND)+(OR,NAND))([1,1])
-        [[True, True], [False, False]]
+        [[True, False], [True, False]]
         """
         print(self.defdef.find(func_name))
         return self.defdef.get(func_name)
@@ -106,7 +106,7 @@ class MoNetInitial:
         >>> m.net(10,1,"fc")[0].name
         '@ddf:Linear(in_features=10, out_features=1, bias=True)'
         """
-        return self.Layer(*args,**kwargs,get=self.__getattr__,print_=False)[1]
+        return self.Layer(*args,**kwargs,defdef=self.defdef,print_=False)[1]
 
     def __getattr__(self, name):
         """call a function from defdef functionspace.
@@ -124,7 +124,7 @@ class MoNetInitial:
         >>> (m.f*(AND,(OR,NAND)))([1,1])
         [True, [True, False]]
         >>> (AND+(OR,NAND))([1,1])
-        [[True, True], [False]]
+        [True, [True, False]]
         """
         try:
             return self.defdef.get(name)

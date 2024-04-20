@@ -375,7 +375,7 @@ class DefDefObj:
         """
         import inspect
         if func_name is None:
-            return FuncModel()
+            return FuncModel(defdef=self)
         if func_name in self.namespace:
             initkwargs = self.namespace[func_name]["default"]
             name = self.namespace[func_name]["func"]

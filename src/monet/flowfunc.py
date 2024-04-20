@@ -77,6 +77,18 @@ def loc(func_ord,*args,**kwargs):
             return all_y
     return FuncModel(all_y,call="loc")
 
+def cat(func_ord,*args,**kwargs):
+    all_y = loc_base(func_ord,*args,**kwargs)
+    cat_y = []
+    for i in all_y:
+        if not isinstance(i,Callable):
+            cat_y += [*i]
+        else:
+            cat_y += [i]
+    for i in cat_y:
+        if not isinstance(i,Callable):
+            return cat_y
+    return FuncModel(cat_y,call="cat")
 
 class FuncModel(Base): # type: ignore
     """
@@ -94,7 +106,7 @@ class FuncModel(Base): # type: ignore
     """
 
     # Define an initializer function, with args as a list and call as a function or string
-    def __init__(self, args=[], call: str | Callable = 'seq', name = ""):
+    def __init__(self, args=[], call: str | Callable = 'seq', name = "",defdef=None):
         # Call the initializer function of the parent class
         super().__init__()
         # If args is not an iterable, convert it to a list
@@ -102,14 +114,15 @@ class FuncModel(Base): # type: ignore
         # Initialize an ordered dictionary
         self._modules = OrderedDict()
         self.call = eval(call) if isinstance(call, str) else call
-        self.name = name if name != "" else str(self.call)
+        self.name = name if name != "" else self.call.__name__
+        self.defdef = defdef
         # Iterate over each element in args
         for i, arg in enumerate(args):
             # If arg is a Module or ddf object
             if self.is_ddf_funcmodel(arg):
                 if self.is_funcmodel(arg.func):
-                    self._modules[str(i)] = arg.func[0] if len(arg.func) == 1 else arg.func
-                elif not self.is_ddf(arg):
+                    arg = arg.func
+                if not self.is_ddf(arg):
                     if arg.name not in ['loc','seq']:
                         self._modules[str(i)+":"+arg.name] = arg[0] if len(arg) == 1 else arg
                         if len(arg) == 1:
@@ -132,6 +145,9 @@ class FuncModel(Base): # type: ignore
         self.p = self.pcall
         self.func = self.__call__
         self.id =f' *id:{id(self)}'
+        if self.defdef is not None:
+            self.defdef.add(self.name,self)
+
 
     def add_module(self, name, module):
         self._modules[name] = module
@@ -182,14 +198,20 @@ class FuncModel(Base): # type: ignore
     def __len__(self):
         return len(self._modules)
 
-    def __add__(self,other):
+    def __add__(self,other,mode = loc):
         '''+ means loc call'''
         if isinstance(other,int):
-            return FuncModel([self]+[FuncModel()]*other,call=loc,name=self.name+"x"+str(other))
+            return FuncModel([self]+[FuncModel()]*other,call=mode,name=self.name+"x"+str(other))
+        if isinstance(other,str):
+            if other.startswith('~'):
+                other = ~self.defdef.get(other[1:])
+            else:
+                other = self.defdef.get(other)
+            return self+other
         else:
             if len(self) == 1:
                 nn_list = [*self] # not change
-            elif self.call == loc:
+            elif self.call == mode:
                 nn_list = [*self]
             else:
                 nn_list = [self]
@@ -200,15 +222,24 @@ class FuncModel(Base): # type: ignore
                 elif self.is_ddf_funcmodel(other):
                     nn_list += [other]
                 else:
-                    nn_list += [FuncModel(other,call=loc,name=self.name)]
+                    nn_list += [FuncModel(other,call=loc)]
             else:
                 nn_list += [other]
-        return FuncModel(nn_list,call=loc,name=self.name)
+        return FuncModel(nn_list,call=mode,name=self.name,defdef=self.defdef)
+
+    def __and__(self,other):
+        return self.__add__(other,mode=cat)
 
     def __mul__(self,other):
         '''* means seq call'''
         if isinstance(other,int):
-            return FuncModel([~self for i in range(other)],call=loc,name=self.name+"x"+str(other)) if other !=1 else ~self
+            return FuncModel([self]+[~self for i in range(other-1)],call=loc) if other !=1 else self
+        if isinstance(other,str):
+            if other.startswith('~'):
+                other = ~self.defdef.get(other[1:])
+            else:
+                other = self.defdef.get(other)
+            return self*other
         else:
             if len(self) == 1:
                 nn_list = [*self]
@@ -223,18 +254,18 @@ class FuncModel(Base): # type: ignore
                 elif self.is_ddf_funcmodel(other):
                     nn_list += [other]
                 else:
-                    nn_list += [FuncModel(other,call=loc,name=self.name)]
+                    nn_list += [FuncModel(other,call=loc)]
             else:
                 nn_list += [other]
-        return FuncModel(nn_list,call=seq,name=self.name)
+        return FuncModel(nn_list,call=seq,name=self.name,defdef=self.defdef)
 
     def __pow__(self,other):
         '''** means seq call with deepcopy'''
         import copy
         if isinstance(other,int) and other > 0:
-            return FuncModel([~self for i in range(other)],call=seq) if other !=1 else ~self
+            return FuncModel([self]+[~self for i in range(other-1)],call=seq) if other !=1 else self
         else:
-            raise ValueError('** must with a int number > 0')
+            return self*copy.deepcopy(other)
 
     def __invert__(self):
         """
@@ -272,15 +303,27 @@ class FuncModel(Base): # type: ignore
         return issubclass(func.__class__,(FuncModel,ddf))
 
     def __call__(self,*args, **kwargs) -> Any:
-        if len(self._modules)==0 and isinstance(args[0],str) and len(args) == 1 and len(kwargs) == 0:
-            return FuncModel(name=args[0])
+        """
+        >>> from monet import MoNetInitial
+        >>> m = MoNetInitial()
+        >>> test = m.f("test")*max*min
+        >>> len(m.test.func)
+        2
+        """
+        if len(self._modules)==0 and len(args) == 1 and isinstance(args[0],str)  and len(kwargs) == 0:
+            return FuncModel(name=args[0],defdef=self.defdef)
         return self.forward(*args, **kwargs)
+
+    def reset_parameters(self):
+        for module in self._modules.values():
+            if hasattr(module,'reset_parameters'):
+                module.reset_parameters()
 
 
 class ddf(FuncModel):
     '''Add the ability of flow passing and formulaic expression to any function
-    >>> ddf(max).name
-    '@ddf:max'
+    >>> ddf(max).info
+    '@ddf:<built-in function max>'
     >>> ddf(max)(1,2,3)
     3
     '''
@@ -289,11 +332,16 @@ class ddf(FuncModel):
         self.func = func
         self.initkwargs = initkwargs
         self.__name__=str(get_name(self.func)) if name is None else str(name)
-        if (str_func:=str(self.func)).startswith("<function <lambda>"):
+        self.name = f'@{self.__class__.__name__}:'+f"{self.__name__}"
+        if self.func.__class__.__name__ != "builtin_function_or_method":
             signature = inspect.signature(self.func)
-            self.name = f'@{self.__class__.__name__}:'+f"{self.func.__qualname__}{signature}>"
+            if (str(self.func)).startswith("<function <lambda>"):
+                signature = inspect.signature(self.func)
+                self.info: str = f'@{self.__class__.__name__}:'+f"{self.func.__qualname__}{signature}"
+            else:
+                self.info = f'@{self.__class__.__name__}:'+f"{self.__name__}{signature}{initkwargs}"
         else:
-            self.name=f'@{self.__class__.__name__}:'+str_func
+            self.info = f'@{self.__class__.__name__}:'+f"{self.func.__repr__()}"
         self.id =f' *id:{id(self)}'
 
     def forward(self, *args, **kwargs):
@@ -308,7 +356,7 @@ class ddf(FuncModel):
 
     def __repr__(self):
         self.func_id =f' *id:{id(self.func)}'
-        return self.name + self.func_id
+        return self.info +self.func_id
 
 if __name__ == "__main__":
     import doctest

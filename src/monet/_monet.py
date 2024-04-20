@@ -101,13 +101,14 @@ def mn_get(func_name):
 
 
 class monet(Fn):
-    def __init__(self,module,i=-1,o=0,net='',get=mn_get,in_dim=-1):
+    def __init__(self,module,i=-1,o=0,net='',defdef=None,in_dim=-1):
         super(monet,self).__init__()
         self.i = i
         self.auto_i = (i == 0)
         self.o = o
         self.net = net
-        self.mn_get = mn_get
+        self.defdef = defdef
+        self.mn_get = mn_get if defdef is None else defdef.get
         self.in_dim = 1 if net.startswith("cv") and in_dim==-1 else in_dim
         if Fn.is_ddf(module):
             self.initkwargs = module.initkwargs
@@ -121,7 +122,7 @@ class monet(Fn):
         if self.auto_i is True and self.i != x.shape[self.in_dim]:
             self.i = x.shape[self.in_dim]
             print("[Warning] Input dim is not match, set to {}".format(self.i))
-            self.o,Nets = Layer(self.i,self.o,self.net,self.in_dim,self.get)
+            self.o,Nets = Layer(self.i,self.o,self.net,self.in_dim,self.defdef)
             self.Net = Nets.Net
             if hasattr(x,"device") and hasattr(self.Net,"to"):
                 self.Net.to(x.device)
@@ -142,7 +143,8 @@ def Layer(i: int | str | list | tuple=0,
           o:int | list[int]=1,
           net:str | list[str,Callable] ="fc_1",
           in_dim=-1,
-          get = mn_get,gap=0,
+          defdef = None,
+          gap=0,
           print_=True):
     """
     >>> o, Net = Layer("fc")
@@ -235,7 +237,7 @@ def Layer(i: int | str | list | tuple=0,
                 print("   "*(gap)+"┗━ "+str(i),"->", "net :", o, net)
 
         if isinstance(o,(list,tuple)) or isinstance(net,(list,tuple)):
-            next_i, module = Layer(i,o,net,in_dim,get,gap+1,print_)
+            next_i, module = Layer(i,o,net,in_dim,defdef,gap+1,print_)
             i = next_i if mode == "seq" else i
             next_i_list = next_i_list+next_i if mode == "loc" else next_i
         if isinstance(o,(list,tuple)) and isinstance(net,(list,tuple)):
@@ -252,6 +254,10 @@ def Layer(i: int | str | list | tuple=0,
                     Net = monet()
                 else:
                     import inspect
+                    if defdef is not None:
+                        get = defdef.get
+                    else:
+                        get = mn_get
                     func = get(net)
                     if list(inspect.signature(func.func).parameters.keys()) == ["i","o"]:
                         Net = func(i,o)
@@ -264,7 +270,7 @@ def Layer(i: int | str | list | tuple=0,
                 except Exception:
                     Net = net
                 name = net.__name__
-            Net = monet(Net,i,o,net,get,in_dim) # type: ignore
+            Net = monet(Net,i,o,net,defdef,in_dim) # type: ignore
             if i == 0:
                 Nets.in_dim = Net.in_dim
             Nets.add_module(f"{k}:{name}", Net )
