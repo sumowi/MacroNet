@@ -104,9 +104,9 @@ class MoNetInitial:
         >>> from monet.torch_ddf import torch_dict
         >>> m = MoNetInitial(dict_slice(torch_dict,0,3))
         >>> m.net(10,1,"fc")[0].name
-        '@ddf:Linear(in_features=10, out_features=1, bias=True)'
+        '@monet:Linear(in_features=10, out_features=1, bias=True)'
         """
-        return self.Layer(*args,**kwargs,defdef=self.defdef,print_=False)[1]
+        return self.Layer(*args,**kwargs,defdef=self.defdef,print_=False)
 
     def __getattr__(self, name):
         """call a function from defdef functionspace.
@@ -178,7 +178,7 @@ class MoNetInitial:
         >>> m("fc").name
         '@ddf:fc'
         >>> m(10,[10,20,10],[["fc","act"]]).name
-        {'seq': (10, [10, 20, 10], [['fc', 'act'], ['fc', 'act'], ['fc', 'act']])}
+        "seq:(10,[10, 20, 10],[['fc', 'act'], ['fc', 'act'], ['fc', 'act']])"
         """
         if arg1 is None:
             return self.f

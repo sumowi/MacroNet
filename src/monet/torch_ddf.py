@@ -2,21 +2,24 @@
 >>> from monet import MoNetInitial,dict_slice
 >>> from monet.torch_ddf import torch_dict
 >>> m = MoNetInitial(dict_slice(torch_dict,0,28))
->>> m.fit("fc_False")(10,1)
-Linear(in_features=10, out_features=1, bias=False)
->>> m.fit("bfc_0")((10,10),1)
-Bilinear(in1_features=10, in2_features=10, out_features=1, bias=False)
+>>> m("fc_False")(10,1).name
+'@ddf:Linear(in_features=10, out_features=1, bias=False)'
+>>> m("bfc_0")((10,10),1).name
+'@ddf:Bilinear(in1_features=10, in2_features=10, out_features=1, bias=False)'
 >>> m.fit("act").func
+('act.PReLU_()', {'activation': 'PReLU', 'args': ()})
 PReLU(num_parameters=1)
 >>> m.fit("relu").func
+('relu_b', {'b': False})
 ReLU()
 >>> m.find("prelu0.1")
 ('prelu_p', {'_p': 0.1})
 >>> print(len(m.funcspace))
-28
+29
 """
 
 import torch.nn as nn
+import torch
 
 torch_dict = {
     # Fully Connected Layer
@@ -99,6 +102,7 @@ torch_dict = {
     "fl_1_-1": lambda start_dim, end_dim: nn.Flatten(
         start_dim=start_dim, end_dim=end_dim
     ),
+    "cat_1": lambda dim: lambda input: torch.cat(input,dim=dim),
     # nn模块，()传递所有参数
     "nn.Linear_(10,1)": lambda func, args: eval(f"nn.{func}")(*args),
 }

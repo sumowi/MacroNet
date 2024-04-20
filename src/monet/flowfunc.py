@@ -42,7 +42,7 @@ def seq(func_ord,*args,**kwargs):
             print("   ", end="")
         for n,(i,func) in enumerate(func_ord.items()):
             y = func(*x)
-            if (mstr:=func.name) and IS_PCALL:
+            if (mstr:=get_name(func)) and IS_PCALL:
                 print(f"   ({i}): "+mstr+f"\n    ┗━ {x} >>\n    ==", y )
             x = (y,)
         if len((y,))>0:
@@ -61,7 +61,7 @@ def loc_base(func_ord,*args,**kwargs):
             print("   ", end="")
         for i,func in func_ord.items():
             y = func(*x)
-            if (mstr:=func.name) and IS_PCALL:
+            if (mstr:=get_name(func)) and IS_PCALL:
                 print(f"   ({i}): "+mstr+f"\n    ┗━ {x} >>\n    ==", y )
             all_y += [y]
         return all_y
@@ -318,6 +318,7 @@ class FuncModel(Base): # type: ignore
         for module in self._modules.values():
             if hasattr(module,'reset_parameters'):
                 module.reset_parameters()
+        return self
 
 
 class ddf(FuncModel):

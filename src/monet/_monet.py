@@ -1,24 +1,25 @@
 """
->>> o, Net = Layer(10,[10,20,10],[["fc","act"]])
+>>> _ = Layer(10,[10,20,10],[["fc","act"]])
 10 seq [10, 20, 10] [['fc', 'act'], ['fc', 'act'], ['fc', 'act']]
-┗━ 10 -> seq : 10 ['fc', 'act']
+┗━ 10 seq [10, 10] ['fc', 'act']
    ┗━ 10 -> net : 10 fc
    ┗━ 10 -> net : 10 act
-   -> 10
-┗━ 10 -> seq : 20 ['fc', 'act']
+    -> 10
+┗━ 10 seq [20, 20] ['fc', 'act']
    ┗━ 10 -> net : 20 fc
    ┗━ 20 -> net : 20 act
-   -> 20
-┗━ 20 -> seq : 10 ['fc', 'act']
+    -> 20
+┗━ 20 seq [10, 10] ['fc', 'act']
    ┗━ 20 -> net : 10 fc
    ┗━ 10 -> net : 10 act
-   -> 10
+    -> 10
 -> 10
 """
 
 from typing import Callable, OrderedDict
 from monet.flowfunc import FuncModel as Fn
 from monet.flowfunc import ddf
+import inspect
 def get_name_num(_str="fc231"):
     """
     >>> get_name_num("fc231")
@@ -100,9 +101,9 @@ def mn_get(func_name):
                 return ddf(lambda *args,**kwargs: func(*args,*_args,**kwargs))
 
 
-class monet(Fn):
+class monet(ddf):
     def __init__(self,module,i=-1,o=0,net='',defdef=None,in_dim=-1):
-        super(monet,self).__init__()
+        super().__init__(module)
         self.i = i
         self.auto_i = (i == 0)
         self.o = o
@@ -113,10 +114,7 @@ class monet(Fn):
         if Fn.is_ddf(module):
             self.initkwargs = module.initkwargs
             self.name = module.name
-            module = module.func
-        self._modules = OrderedDict([('0',module)])
         self.Net = module
-        self.func = module
 
     def forward(self,x,*args,**kwargs):
         if self.auto_i is True and self.i != x.shape[self.in_dim]:
@@ -126,17 +124,7 @@ class monet(Fn):
             self.Net = Nets.Net
             if hasattr(x,"device") and hasattr(self.Net,"to"):
                 self.Net.to(x.device)
-        if kwargs == {}:
-            kwargs = self.initkwargs
-        else:
-            kwargs.update(self.initkwargs)
-        res = super().forward(x,*args,**kwargs)
-        if isinstance(res,Callable):
-            return ddf(res)
-
-    def __repr__(self):
-        main_str=self.__class__.__name__
-        return f'@{main_str}:'+ str(repr(self.Net) + f' *id:{id(self)}')
+        return super().forward(x,*args,**kwargs)
 
 
 def Layer(i: int | str | list | tuple=0,
@@ -147,146 +135,155 @@ def Layer(i: int | str | list | tuple=0,
           gap=0,
           print_=True):
     """
-    >>> o, Net = Layer("fc")
-    0 seq [1] ['fc']
-    ┗━ 0 -> net : 1 fc
+    >>> _ = Layer("fc_True")
+    0 seq [1] ['fc_True']
+    ┗━ 0 -> net : 1 fc_True
     -> 1
-    >>> o, Net = Layer(10,1,"fc")
+    >>> _ = Layer(10,1,"fc")
     10 seq [1] ['fc']
     ┗━ 10 -> net : 1 fc
     -> 1
-    >>> o, Net = Layer(10,[10,10],"fc")
-    10 seq [10, 10] ['fc', 'fc']
-    ┗━ 10 -> net : 10 fc
-    ┗━ 10 -> net : 10 fc
+    >>> _ = Layer(10,[20,10],"fc")
+    10 seq [20, 10] ['fc', 'fc']
+    ┗━ 10 -> net : 20 fc
+    ┗━ 20 -> net : 10 fc
     -> 10
-    >>> o, Net = Layer(10,[10],["fc","act"])
-    10 seq [10, 10] ['fc', 'act']
-    ┗━ 10 -> net : 10 fc
-    ┗━ 10 -> net : 10 act
-    -> 10
-    >>> o, Net = Layer(10,(10,20),"fc")
-    10 loc [10, 20] ['fc', 'fc']
+    >>> _ = Layer(10,[20],["fc","act"])
+    10 seq [20, 20] ['fc', 'act']
+    ┗━ 10 -> net : 20 fc
+    ┗━ 20 -> net : 20 act
+    -> 20
+    >>> _ = Layer(10,(10,20),"fc")
+    10 loc (10, 20) ('fc', 'fc')
     ┗━ 10 -> net : 10 fc
     ┗━ 10 -> net : 20 fc
     -> (10, 20)
-    >>> o, Net = Layer(10,10,("fc","fc"))
-    10 loc [10, 10] ['fc', 'fc']
-    ┗━ 10 -> net : 10 fc
-    ┗━ 10 -> net : 10 fc
-    -> (10, 10)
-    >>> o, Net = Layer((10,20),1,"bfc")
+    >>> _ = Layer(10,20,("fc","fc"))
+    10 loc (20, 20) ('fc', 'fc')
+    ┗━ 10 -> net : 20 fc
+    ┗━ 10 -> net : 20 fc
+    -> (20, 20)
+    >>> _ = Layer((10,20),1,"bfc")
     (10, 20) seq [1] ['bfc']
     ┗━ (10, 20) -> net : 1 bfc
     -> 1
-    >>> o, Net = Layer(10,[(10,20),1],["fc","bfc"])
+    >>> _ = Layer(10,[(10,20),1],["fc","bfc"])
     10 seq [(10, 20), 1] ['fc', 'bfc']
-    ┗━ 10 -> loc : (10, 20) fc
+    ┗━ 10 loc (10, 20) ('fc', 'fc')
        ┗━ 10 -> net : 10 fc
        ┗━ 10 -> net : 20 fc
        -> (10, 20)
     ┗━ (10, 20) -> net : 1 bfc
     -> 1
-    >>> o, Net = Layer((10,20),(10,20),["bfc","bfc"])
+    >>> _ = Layer((10,20),[(10,20)],["bfc","bfc"])
     (10, 20) seq [(10, 20), (10, 20)] ['bfc', 'bfc']
-    ┗━ (10, 20) -> loc : (10, 20) bfc
+    ┗━ (10, 20) loc (10, 20) ('bfc', 'bfc')
        ┗━ (10, 20) -> net : 10 bfc
        ┗━ (10, 20) -> net : 20 bfc
        -> (10, 20)
-    ┗━ (10, 20) -> loc : (10, 20) bfc
+    ┗━ (10, 20) loc (10, 20) ('bfc', 'bfc')
        ┗━ (10, 20) -> net : 10 bfc
        ┗━ (10, 20) -> net : 20 bfc
        -> (10, 20)
     -> (10, 20)
+    >>> _ = Layer(2,[(1,1),2,1],[["fc","act"],"cat",["fc","act"]])
+    2 seq [(1, 1), 2, 1] [['fc', 'act'], 'cat', ['fc', 'act']]
+    ┗━ 2 loc (1, 1) (['fc', 'act'], ['fc', 'act'])
+       ┗━ 2 seq [1, 1] ['fc', 'act']
+          ┗━ 2 -> net : 1 fc
+          ┗━ 1 -> net : 1 act
+          -> 1
+       ┗━ 2 seq [1, 1] ['fc', 'act']
+          ┗━ 2 -> net : 1 fc
+          ┗━ 1 -> net : 1 act
+          -> 1
+       -> (1, 1)
+    ┗━ (1, 1) -> net : 2 cat
+    ┗━ 2 seq [1, 1] ['fc', 'act']
+       ┗━ 2 -> net : 1 fc
+       ┗━ 1 -> net : 1 act
+       -> 1
+    -> 1
     """
     if isinstance(i,(str,list)):
         net = i
         i = 0
 
-    if isinstance(o,(tuple))  and not isinstance(net,(list)):
-        mode = "loc"
-    elif isinstance(net,(tuple)) and not isinstance(o,(list)):
-        mode = "loc"
-    else:
-        mode = "seq"
+    name = ''
+    def mode_check(net,o):
+        net_list = net if isinstance(net,(list,tuple))  else [net]
+        o_list = o if isinstance(o,(list,tuple)) else [o]
+        max_len = max(len(net_list),len(o_list))
+        if len(net_list) == 1 and len(o_list) == 1:
+            mode = "seq"
+            return mode,list(o_list),list(net_list)
+        elif isinstance(net_list,(list)) and isinstance(o_list,(list)):
+            mode = "seq"
+            net_list.extend([net_list[-1]]*(max_len-len(net_list)))
+            o_list.extend([o_list[-1]]*(max_len-len(o_list)))
+        elif isinstance(net_list,(list)) and isinstance(o_list,(tuple)):
+            mode = "loc"
+            if len(net_list) == 1:
+                net_list = net_list[0]
+            net_list = (net_list,)*len(o_list)
+        elif isinstance(net_list,(tuple)) and isinstance(o_list,(list)):
+            mode = "loc"
+            if len(o_list) == 1:
+                o_list = o_list[0]
+            o_list = (o_list,)*len(net_list)
+        else:
+            list(net_list).extend([net_list[-1]]*(max_len-len(net_list)))
+            list(o_list).extend([o_list[-1]]*(max_len-len(o_list)))
+            net_list = tuple(net_list)
+            o_list = tuple(o_list)
+            mode = "loc"
+        return mode,o_list,net_list
 
-    net_list = net if isinstance(net,list) else list(net) if isinstance(net,tuple) and not isinstance(o,(list)) else [net]
-    o_list = o if isinstance(o,list) else list(o) if isinstance(o,tuple) and not isinstance(net,(list)) else [o]
+    mode,o_list,net_list = mode_check(net,o)
 
-    max_len = max(len(net_list),len(o_list))
-    net_list.extend([net_list[-1]]*(max_len-len(net_list)))
-    o_list.extend([o_list[-1]]*(max_len-len(o_list)))
-
-    net_name = {mode:(i,o_list,net_list)}
+    net_name = f"{mode}:({i},{o_list},{net_list})"
     Nets = Fn(call=mode,name = net_name)
-    if gap == 0 and print_:
-        print(i,mode,o_list,net_list)
-    next_i_list=[]
-    for k,(o,net) in enumerate(zip(o_list , net_list)): # type: ignore
-        if isinstance(o,(tuple))  and not isinstance(net,(list)):
-            cmode = "loc"
-        elif isinstance(net,(tuple)) and not isinstance(o,(list)):
-            cmode = "loc"
-        else:
-            cmode = "seq"
-        if isinstance(o,(list,tuple)) or isinstance(net,(list,tuple)):
-            if print_:
-                print("   "*(gap)+"┗━ "+str(i),"->", cmode,":", o,net)
-        else:
-            if print_:
-                print("   "*(gap)+"┗━ "+str(i),"->", "net :", o, net)
-
-        if isinstance(o,(list,tuple)) or isinstance(net,(list,tuple)):
-            next_i, module = Layer(i,o,net,in_dim,defdef,gap+1,print_)
-            i = next_i if mode == "seq" else i
-            next_i_list = next_i_list+next_i if mode == "loc" else next_i
-        if isinstance(o,(list,tuple)) and isinstance(net,(list,tuple)):
-            Nets.add_module(f"{k}:mix",module)
-        elif isinstance(net,(list,tuple)):
-            Nets.add_module(f"cell-{k}",module)
-        elif isinstance(o,(list,tuple)):
-            Nets.add_module(f"{k}:{net} x {len(module)}",module)
-        else:
-            assert isinstance(net,(str,Callable)),f"{net} is not a string or Callable"
-            name = ''
-            if isinstance(net,str):
-                if net == '':
-                    Net = monet()
-                else:
-                    import inspect
-                    if defdef is not None:
-                        get = defdef.get
-                    else:
-                        get = mn_get
-                    func = get(net)
-                    if list(inspect.signature(func.func).parameters.keys()) == ["i","o"]:
-                        Net = func(i,o)
-                    else:
-                        Net = func
-                    name = get_args(net)[0]
-            else:
-                try:
-                    Net = net(i,o)
-                except Exception:
-                    Net = net
-                name = net.__name__
-            Net = monet(Net,i,o,net,defdef,in_dim) # type: ignore
-            if i == 0:
-                Nets.in_dim = Net.in_dim
-            Nets.add_module(f"{k}:{name}", Net )
-            if mode == 'seq':
-                i = o
-                next_i_list = [o]
-            else:
-                i = i
-                next_i_list += [o]
-    if hasattr(next_i_list,'__iter__'):
-        next_i = tuple(next_i_list) if len(next_i_list) > 1 else next_i_list[0]
-    else:
-        next_i = (next_i_list)
     if print_:
-        print("   "*gap+"->",next_i)
-    return next_i, Nets
+        if gap == 0:
+            print(i,mode,o_list,net_list)
+        else:
+            if len(o_list) > 1 or len(net_list) > 1:
+                print("   "*(gap-1)+"┗━ "+str(i),mode,o_list,net_list)
+    next_i_list=[]
+    for k,(o,net) in enumerate(zip(o_list , net_list)):
+        if isinstance(o,(list,tuple)) and isinstance(net,(list,tuple)):
+            if len(o) == 1 and len(list) == 1:
+                o = o[0]
+                net = net[0]
+        if not isinstance(o,(list,tuple)) and not isinstance(net,(list,tuple)):
+            assert isinstance(net,(str,Callable)),f"{net} is not a string or Callable"
+            assert isinstance(o, int),f"{o} is not an int"
+            name = net if isinstance(net,str) else net.__name__
+            if print_:
+                print("   "*(gap)+"┗━ "+str(i),"->", "net :",o,name)
+            if isinstance(net,str):
+                name = get_args(net)[0]
+                func = defdef.get(net) if defdef is not None else mn_get(net)
+            func = func.func if Fn.is_ddf(func) else func
+            if list(inspect.signature(func).parameters.keys()) == ["i","o"]:
+                func = func(i,o)
+            else:
+                func = func
+            Net = monet(func,i,o,net,defdef)
+            Nets.add_module(f"{k}:{name}", Net )
+
+        else:
+            Net = Layer(i,o,net,in_dim,defdef,gap+1,print_)
+            if isinstance(net,(list,tuple)) and isinstance(Net,(list,tuple)):
+                Nets.add_module(f"{k}:mix",Net)
+            else:
+                Nets.add_module(f"cell-{k}",Net)
+        i = o if mode == "seq" else i
+        next_i_list = [o] if mode == "seq" else next_i_list+[o]
+    if print_:
+        next_i_list = next_i_list[0] if len(next_i_list) == 1 else tuple(next_i_list)
+        print("   "*gap+"->",next_i_list)
+    return Nets
 
 X = Fn()
 

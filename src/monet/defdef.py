@@ -385,6 +385,8 @@ class DefDefObj:
         func = self.funcspace[name]["func"]
         if list(inspect.signature(func).parameters.keys()) == list(initkwargs.keys()):
             return ddf(func(**initkwargs), func_name)
+        elif initkwargs == {} and FuncModel.is_ddf_funcmodel(func):
+            return func
         else:
             return ddf(func, func_name,initkwargs)
 
