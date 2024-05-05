@@ -9,6 +9,7 @@ authors = [
 ]
 dependencies = [
     "skorch>=0.15.0",
+    "torch==2.2.1",
 ]
 requires-python = "==3.10.*"
 readme = "README.md"
@@ -20,7 +21,6 @@ distribution = true
 [tool.pdm.dev-dependencies]
 dev = [
     "ipykernel>=6.29.4",
-    "torch==2.2.1",
     "numpy>=1.26.4",
     "pip>=24.0",
 ]
