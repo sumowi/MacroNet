@@ -1,16 +1,16 @@
 """
->>> from monet import MoNetInitial,dict_slice
+>>> from monet.base import MoNetInitial,dict_slice
 >>> from monet.torch_ddf import torch_dict
 >>> m = MoNetInitial(dict_slice(torch_dict,0,28))
 >>> m("fc_False")(10,1).name
 '@ddf:Linear(in_features=10, out_features=1, bias=False)'
 >>> m("bfc_0")((10,10),1).name
 '@ddf:Bilinear(in1_features=10, in2_features=10, out_features=1, bias=False)'
->>> m.fit("act").func
-('act.PReLU_()', {'activation': 'PReLU', 'args': ()})
+>>> m.get("act").func
+act ('act.PReLU_()', {'activation': 'PReLU', 'args': ()})
 PReLU(num_parameters=1)
->>> m.fit("relu").func
-('relu_b', {'b': False})
+>>> m.get("relu").func
+relu ('relu_b', {'b': False})
 ReLU()
 >>> m.find("prelu0.1")
 ('prelu_p', {'_p': 0.1})
@@ -44,11 +44,11 @@ torch_dict = {
     # ======================================================
     # DropOut, DropOutNdim, AlphaDropout, FeatureAlphaDropout
     # bouth have p and innplace option
-    "dp_0.5_False": lambda p, inplace: nn.Dropout(
-        p=p, inplace=bool(inplace)
+    "dp_0.5_False": lambda pv, inplace: nn.Dropout(
+        p=pv, inplace=bool(inplace)
     ),
-    "dp1_1_False": lambda Ndim, p, inplace: eval(f"nn.Dropout{Ndim}d")(
-        p=p, inplace=bool(inplace)
+    "dp1_1_False": lambda Ndim, pv, inplace: eval(f"nn.Dropout{Ndim}d")(
+        p=pv, inplace=bool(inplace)
     ),
     # AlphaDropOut
     "adp_0.5_False": lambda p, inplace: nn.AlphaDropout(
@@ -75,34 +75,34 @@ torch_dict = {
     "syn": lambda i, o: nn.SyncBatchNorm(i),
     # ======================================================
     # N-dimensional convolution
-    "cv2_3_1": lambda Ndim, kernel_size, stride: lambda i, o: eval(f"nn.Conv{Ndim}d")(
-        in_channels=i, out_channels=o, kernel_size=kernel_size, stride=stride
+    "cv2_3_1_0": lambda Ndim, kernel_size, stride, padding: lambda i, o: eval(f"nn.Conv{Ndim}d")(
+        in_channels=i, out_channels=o, kernel_size=kernel_size, stride=stride, padding=padding
     ),
     # Transposed convolution
-    "cvT2_3_1": lambda Ndim, kernel_size, stride: lambda i, o: eval(
+    "cvT2_3_1_0": lambda Ndim, kernel_size, stride, padding: lambda i, o: eval(
         f"nn.ConvTranspose{Ndim}d"
-    )(in_channels=i, out_channels=o, kernel_size=kernel_size, stride=stride),  # 反卷积
+    )(in_channels=i, out_channels=o, kernel_size=kernel_size, stride=stride, padding=padding),  # 反卷积
     # N-dimensional Maximum pooling
-    "mp2_2_1": lambda dim, kernel_size, stride: eval(f"nn.MaxPool{dim}d")(
-        kernel_size=kernel_size, stride=stride
+    "mp2_3_1_0": lambda dim, kernel_size, stride, padding: eval(f"nn.MaxPool{dim}d")(
+        kernel_size=kernel_size, stride=stride, padding=padding
     ),
     # Adaptive N-dimensional Maximum pooling
-    "amp2_2_0": lambda dim, kernel_size, stride: eval(
+    "amp2_3_1_0": lambda dim, kernel_size, stride, padding: eval(
         f"nn.AdaptiveMaxPool{dim}d"
-    )(kernel_size=kernel_size, stride=stride),  # 自适应最大池化
+    )(kernel_size=kernel_size, stride=stride, padding=padding),  # 自适应最大池化
     # N-dimensional Avarage pooling
-    "ap2_1": lambda dim, stride: eval(f"nn.AvgPool{dim}d")(
-        padding=stride
+    "ap2_3_1_0": lambda dim, kernel_size, stride, padding: eval(f"nn.AvgPool{dim}d")(
+        kernel_size=kernel_size, stride=stride, padding=padding
     ),
     # Adaptive N-dimensional Avarage pooling
-    "aap2_1": lambda dim, stride: eval(f"nn.AdaptiveAvgPool{dim}d")(
-        stride=stride
+    "aap2_(6,6)": lambda dim, output_size: eval(f"nn.AdaptiveAvgPool{dim}d")(
+        output_size = output_size
     ),
     # Converting Multi-Dimensional Feature Maps to 1d Feature Vectors
     "fl_1_-1": lambda start_dim, end_dim: nn.Flatten(
         start_dim=start_dim, end_dim=end_dim
     ),
-    "cat_1": lambda dim: lambda input: torch.cat(input,dim=dim),
+    "cat_1": lambda dim: lambda i, o: lambda input,dim=dim: torch.cat(input,dim=dim),
     # nn模块，()传递所有参数
     "nn.Linear_(10,1)": lambda func, args: eval(f"nn.{func}")(*args),
 }

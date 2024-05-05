@@ -10,7 +10,7 @@ class MoNetInitial:
 
     def ddf(self,func,call=None):
         """defdef a function,which return a callable function
-        >>> from monet import MoNetInitial
+        >>> from monet.base import MoNetInitial
         >>> m = MoNetInitial()
         >>> from monet.example import pla2_Type,func_pla
         >>> m.ddf(pla2_Type)

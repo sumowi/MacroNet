@@ -3,7 +3,6 @@ This function defines the classes that enable any function to perform
 multiplocation and division abilities
 """
 from collections import OrderedDict
-from copy import deepcopy
 from typing import Any, Callable
 from collections.abc import Sized
 import inspect
@@ -74,21 +73,44 @@ def loc(func_ord,*args,**kwargs):
     all_y = loc_base(func_ord,*args,**kwargs)
     for i in all_y:
         if not isinstance(i,Callable):
-            return all_y
+            return tuple(all_y)
     return FuncModel(all_y,call="loc")
 
-def cat(func_ord,*args,**kwargs):
+def vstack(func_ord,*args,**kwargs):
     all_y = loc_base(func_ord,*args,**kwargs)
     cat_y = []
     for i in all_y:
         if not isinstance(i,Callable):
-            cat_y += [*i]
+            if isinstance(i,Sized):
+                cat_y += [*i]
+            else:
+                cat_y += [i]
         else:
             cat_y += [i]
     for i in cat_y:
         if not isinstance(i,Callable):
-            return cat_y
-    return FuncModel(cat_y,call="cat")
+            return tuple(cat_y)
+    return FuncModel(cat_y,call="vstack")
+
+def hstack(func_ord,*args,**kwargs):
+    all_y = loc_base(func_ord,*args,**kwargs)
+    cat_y = {}
+    for i in all_y:
+        if not isinstance(i,Callable):
+            if isinstance(i,Sized):
+                for j in range(len(i)):
+                    if j not in cat_y:
+                        cat_y[j] = []
+                    cat_y[j] += [i[j]]
+            else:
+                if 0 not in cat_y:
+                    cat_y[0] = []
+                cat_y[0] += [i]
+    cat_y = list(cat_y.values())
+    for i in cat_y:
+        if not isinstance(i,Callable):
+            return tuple(cat_y)
+    return FuncModel(cat_y,call="hstack")
 
 class FuncModel(Base): # type: ignore
     """
@@ -174,26 +196,58 @@ class FuncModel(Base): # type: ignore
             return self._modules.__getitem__(i)
 
     def __repr__(self):
-        # Get the __repr__ method of the parent class
-        main_str = super().__repr__()
-        # # If the __repr__ method of the parent class starts with the name of the current class, return the name of the current class and the __repr__ method of the parent class
-        start_str = 'Fn'
-        if main_str.startswith(start_str):
-            return f"{get_name(self.call)}>{main_str}"
-        # # Otherwise, return the name of the current class and the __repr__ method of the current class
+        start_str = get_name(self.call)
+        lines = [start_str + '(']
+        # Iterate over the _modules attribute of the current class to get the __repr__ method of each module
+        for key, func in self._modules.items():
+            _rerp_str = []
+            # Iterate over each module's __repr__ method and add indentation
+            for i, r in enumerate(repr(func).split('\n')):
+                _rerp_str += ["  " + r] if i > 0 else [r]
+            # Add each module's __repr__ method to the lines list
+            lines += [f'  ({key}): ' + "\n".join(_rerp_str)]
+        # Return the name of the current class, the __repr__ method of the current class, and the __repr__ method of each module
+        # main_str = f"{get_name(self.call)}>" + '\n'.join(lines)
+        main_str = '\n'.join(lines)
+        return main_str + '\n)' if len(lines) > 1 else main_str + ')'
+
+    def mermaid(self,is_root=True,inputs=['input']):
+        start_str = "```mermaid \nflowchart TB" if is_root else ""
+        if is_root:
+            start_str = '''```mermaid \nflowchart TB'''
+        lines = [start_str]
+        outputs =[]
+        for n in range(len(self._modules)):
+            k = list(self._modules.keys())[n]
+            m = self._modules[k]
+            if isinstance(m,FuncModel) and not isinstance(m,ddf):
+                _outputs, _lines = m.mermaid(is_root=False,inputs=inputs)
+                for i,l in enumerate(_lines.split('\n')[1:]):
+                    if i ==1:
+                        lines.append(f"  subgraph {id(m)}[{k}: {m.call.__name__}]")
+                    lines.append("  "+l)
+                lines.append("  end")
+                if self.call == seq:
+                    inputs = _outputs
+                    outputs = _outputs
+                else:
+                    outputs+=[*_outputs]
+            else:
+                for ipt in inputs:
+                    lines.append(f"  {ipt} -- {m.info}--> {id(m)}(({k}))".replace('^','\\n  '))
+                if self.call == seq:
+                    inputs = [f'{id(m)}(({k}))']
+                    outputs = [f'{id(m)}(({k}))']
+                else:
+                    outputs+=[f'{id(m)}(({k}))']
+        if is_root:
+            for ipt in inputs:
+                lines.append(f"  {ipt} --> output")
+            lines.append("```")
+            return '\n'.join(lines)
         else:
-            lines = [start_str + '(']
-            # Iterate over the _modules attribute of the current class to get the __repr__ method of each module
-            for key, func in self._modules.items():
-                _rerp_str = []
-                # Iterate over each module's __repr__ method and add indentation
-                for i, r in enumerate(repr(func).split('\n')):
-                    _rerp_str += ["  " + r] if i > 0 else [r]
-                # Add each module's __repr__ method to the lines list
-                lines += [f'  ({key}): ' + "\n".join(_rerp_str)]
-            # Return the name of the current class, the __repr__ method of the current class, and the __repr__ method of each module
-            main_str = f"{get_name(self.call)}>" + '\n'.join(lines)
-            return main_str + '\n)' if len(lines) > 1 else main_str + ')'
+            # print(outputs)
+            return outputs,'\n'.join(lines)
 
     def __len__(self):
         return len(self._modules)
@@ -201,7 +255,7 @@ class FuncModel(Base): # type: ignore
     def __add__(self,other,mode = loc):
         '''+ means loc call'''
         if isinstance(other,int):
-            return FuncModel([self]+[FuncModel()]*other,call=mode,name=self.name+"x"+str(other))
+            return FuncModel([self]+[FuncModel()]*other,call=mode,name=self.name+"x"+str(other),defdef=self.defdef)
         if isinstance(other,str):
             if other.startswith('~'):
                 other = ~self.defdef.get(other[1:])
@@ -221,19 +275,27 @@ class FuncModel(Base): # type: ignore
                         nn_list += [other]
                 elif self.is_ddf_funcmodel(other):
                     nn_list += [other]
+                elif isinstance(other,list):
+                    nn_list += [FuncModel(other,call=seq,defdef=self.defdef)]
+                elif isinstance(other,tuple):
+                    nn_list += [FuncModel(other,call=loc,defdef=self.defdef)]
                 else:
-                    nn_list += [FuncModel(other,call=loc)]
+                    raise ValueError('other should be list/tuple or ddf object')
             else:
                 nn_list += [other]
         return FuncModel(nn_list,call=mode,name=self.name,defdef=self.defdef)
 
+    def __mod__(self,other):
+        return self.__add__(other,mode=vstack)
+
     def __and__(self,other):
-        return self.__add__(other,mode=cat)
+        return self.__add__(other,mode=hstack)
+
 
     def __mul__(self,other):
         '''* means seq call'''
         if isinstance(other,int):
-            return FuncModel([self]+[~self for i in range(other-1)],call=loc) if other !=1 else self
+            return FuncModel([self]+[~self for i in range(other-1)],call=loc,defdef=self.defdef) if other !=1 else self
         if isinstance(other,str):
             if other.startswith('~'):
                 other = ~self.defdef.get(other[1:])
@@ -253,8 +315,12 @@ class FuncModel(Base): # type: ignore
                     nn_list += [other]
                 elif self.is_ddf_funcmodel(other):
                     nn_list += [other]
+                elif isinstance(other,list):
+                    nn_list += [FuncModel(other,call=seq,defdef=self.defdef)]
+                elif isinstance(other,tuple):
+                    nn_list += [FuncModel(other,call=loc,defdef=self.defdef)]
                 else:
-                    nn_list += [FuncModel(other,call=loc)]
+                    raise ValueError('other should be list/tuple or ddf object')
             else:
                 nn_list += [other]
         return FuncModel(nn_list,call=seq,name=self.name,defdef=self.defdef)
@@ -304,10 +370,10 @@ class FuncModel(Base): # type: ignore
 
     def __call__(self,*args, **kwargs) -> Any:
         """
-        >>> from monet import MoNetInitial
+        >>> from monet.base import MoNetInitial
         >>> m = MoNetInitial()
         >>> test = m.f("test")*max*min
-        >>> len(m.test.func)
+        >>> len(m.test)
         2
         """
         if len(self._modules)==0 and len(args) == 1 and isinstance(args[0],str)  and len(kwargs) == 0:
@@ -334,15 +400,16 @@ class ddf(FuncModel):
         self.initkwargs = initkwargs
         self.__name__=str(get_name(self.func)) if name is None else str(name)
         self.name = f'@{self.__class__.__name__}:'+f"{self.__name__}"
+
         if self.func.__class__.__name__ != "builtin_function_or_method":
             signature = inspect.signature(self.func)
-            if (str(self.func)).startswith("<function <lambda>"):
+            if (str(self.func)).startswith("<function <lambda>") and "lambda" in self.__name__:
                 signature = inspect.signature(self.func)
-                self.info: str = f'@{self.__class__.__name__}:'+f"{self.func.__qualname__}{signature}"
+                self.info=f"{self.__name__}^{signature}{initkwargs}"
             else:
-                self.info = f'@{self.__class__.__name__}:'+f"{self.__name__}{signature}{initkwargs}"
+                self.info = f"{self.__name__}^{signature}{initkwargs}"
         else:
-            self.info = f'@{self.__class__.__name__}:'+f"{self.func.__repr__()}"
+            self.info = f"{self.func.__repr__()}"
         self.id =f' *id:{id(self)}'
 
     def forward(self, *args, **kwargs):
@@ -357,7 +424,7 @@ class ddf(FuncModel):
 
     def __repr__(self):
         self.func_id =f' *id:{id(self.func)}'
-        return self.info +self.func_id
+        return f'@{self.__class__.__name__}:'+self.info +self.func_id
 
 if __name__ == "__main__":
     import doctest

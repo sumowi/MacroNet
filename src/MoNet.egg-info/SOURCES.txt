@@ -7,6 +7,7 @@ src/MoNet.egg-info/requires.txt
 src/MoNet.egg-info/top_level.txt
 src/monet/__init__.py
 src/monet/_monet.py
+src/monet/base.py
 src/monet/defdef.py
 src/monet/example.py
 src/monet/flowfunc.py

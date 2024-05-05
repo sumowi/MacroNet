@@ -98,7 +98,7 @@ class DefDefObj:
     def add(self, dict_or_func: list | tuple) -> "list[dictkeys]": ...
     @overload
     def add(self, dict_or_func: "namestr", call:"Callable") -> "dictkeys": ...
-    def add(self, dict_or_func: "dict_func_type | namestr", *args):
+    def add(self, dict_or_func: "dict_func_type | namestr", *args,child_print=False):
         """add func from func or func_dict (see DefDefObj.funcspace_example)
         >>> ddf = DefDefObj()
         >>> ddf.add(ddf.parabolaA_B_C).name
@@ -139,6 +139,8 @@ class DefDefObj:
                     child["splits"] = self.get_splits(name, child["default"])
                 new_func = {name: child}
                 self.funcspace.update(new_func)
+                if child_print:
+                    print(child)
                 # self.funcfind(new_func)
                 return ddf(new_func[name]['func'],name,child['default'])
             else:
@@ -247,9 +249,7 @@ class DefDefObj:
         {'A': 3, 'B': 2, 'C': 3}
         >>> DefDefObj.get_namespace_kwargs({"A":1,"B":2,"C":3},["parabola","_","_"],"parabola_3")
         {'A': 1, 'B': 3, 'C': 3}
-        >>> DefDefObj.get_namespace_kwargs({"A":1,"B":2,"C":3},["parabola","_","_"],"parabola_3")
-        {'A': 1, 'B': 3, 'C': 3}
-        >>> from monet import MoNetInitial, pla2_Type
+        >>> from monet.base import MoNetInitial, pla2_Type
         >>> m = MoNetInitial()
         >>> m.ddf(pla2_Type).name
         '@ddf:pla2_Type'
@@ -276,6 +276,8 @@ class DefDefObj:
             finally:
                 # The type of the new value must be the same as the default value type, except for those that default to None
                 if type(kwargs[key]) == type(default) or default is None:
+                    return True
+                if type(kwargs[key]) == tuple:
                     return True
                 else:
                     return False

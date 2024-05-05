@@ -1,10 +1,10 @@
 """
->>> from monet.example import funcspace_json
->>> ddf_pla = funcspace_json['ddf_w1_w2_b_pla']['func']
+>>> from monet.example import funcspace_dict_full
+>>> ddf_pla = funcspace_dict_full['ddf_w1_w2_b_pla']['func']
 >>> nand = ddf_pla(-0.5,-0.5,0.7)
 >>> nand([0,1])>0,nand([1,1])>0,nand([0,0])>0,nand([1,0])>0
 (True, False, True, True)
->>> ddf_pba = funcspace_json['parabolaA_B_C']['func']
+>>> ddf_pba = funcspace_dict_full['parabolaA_B_C']['func']
 >>> parabola = ddf_pba(1,2,3)
 >>> parabola(0),parabola(1),parabola(2),parabola(3)
 (3, 6, 11, 18)

@@ -4,19 +4,19 @@
 ┗━ 10 seq [10, 10] ['fc', 'act']
    ┗━ 10 -> net : 10 fc
    ┗━ 10 -> net : 10 act
-    -> 10
+   -> 10
 ┗━ 10 seq [20, 20] ['fc', 'act']
    ┗━ 10 -> net : 20 fc
    ┗━ 20 -> net : 20 act
-    -> 20
+   -> 20
 ┗━ 20 seq [10, 10] ['fc', 'act']
    ┗━ 20 -> net : 10 fc
    ┗━ 10 -> net : 10 act
-    -> 10
+   -> 10
 -> 10
 """
 
-from typing import Callable, OrderedDict
+from typing import Callable, Sized
 from monet.flowfunc import FuncModel as Fn
 from monet.flowfunc import ddf
 import inspect
@@ -48,6 +48,8 @@ def get_args(net="fc_1"):
     ('act', [], ['Relu'], [()])
     >>> get_args("cv2__2")
     ('cv', [2], [], ['', 2])
+    >>> get_args("aap_(6,6)")
+    ('aap', [], [], [(6, 6)])
     """
     args=net.split("_")
     args_str = args[0].split(".")
@@ -114,16 +116,15 @@ class monet(ddf):
         if Fn.is_ddf(module):
             self.initkwargs = module.initkwargs
             self.name = module.name
-        self.Net = module
 
     def forward(self,x,*args,**kwargs):
         if self.auto_i is True and self.i != x.shape[self.in_dim]:
+            print(f"[Info] Input size={self.i} is not match, reset to {x.shape[self.in_dim]}:")
             self.i = x.shape[self.in_dim]
-            print("[Warning] Input dim is not match, set to {}".format(self.i))
-            self.o,Nets = Layer(self.i,self.o,self.net,self.in_dim,self.defdef)
-            self.Net = Nets.Net
-            if hasattr(x,"device") and hasattr(self.Net,"to"):
-                self.Net.to(x.device)
+            Nets = Layer(self.i,self.o,self.net,self.in_dim,self.defdef)
+            super().__init__(Nets)
+            if hasattr(x,"device") and hasattr(self.func,"to"):
+                self.func.to(x.device)
         return super().forward(x,*args,**kwargs)
 
 
@@ -241,7 +242,7 @@ def Layer(i: int | str | list | tuple=0,
 
     mode,o_list,net_list = mode_check(net,o)
 
-    net_name = f"{mode}:({i},{o_list},{net_list})"
+    net_name = "net"
     Nets = Fn(call=mode,name = net_name)
     if print_:
         if gap == 0:
@@ -264,21 +265,27 @@ def Layer(i: int | str | list | tuple=0,
             if isinstance(net,str):
                 name = get_args(net)[0]
                 func = defdef.get(net) if defdef is not None else mn_get(net)
-            func = func.func if Fn.is_ddf(func) else func
-            if list(inspect.signature(func).parameters.keys()) == ["i","o"]:
-                func = func(i,o)
-            else:
-                func = func
+            try:
+                func = func()
+            except Exception:
+                pass
+            finally:
+                func = func.func if Fn.is_ddf(func) else func
+                if list(inspect.signature(func).parameters.keys()) == ["i","o"]:
+                    func = func(i,o)
+                else:
+                    func = func
+                    o = i
             Net = monet(func,i,o,net,defdef)
             Nets.add_module(f"{k}:{name}", Net )
 
         else:
             Net = Layer(i,o,net,in_dim,defdef,gap+1,print_)
-            if isinstance(net,(list,tuple)) and isinstance(Net,(list,tuple)):
-                Nets.add_module(f"{k}:mix",Net)
+            if isinstance(net,(list,tuple)) and isinstance(o,(list,tuple)):
+                Nets.add_module(f"{k}-group",Net)
             else:
-                Nets.add_module(f"cell-{k}",Net)
-        i = o if mode == "seq" else i
+                Nets.add_module(f"{k}-cell",Net)
+        i = o[-1] if isinstance(o,list) else o  if mode == "seq" else i
         next_i_list = [o] if mode == "seq" else next_i_list+[o]
     if print_:
         next_i_list = next_i_list[0] if len(next_i_list) == 1 else tuple(next_i_list)

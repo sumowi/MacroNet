@@ -21,16 +21,16 @@ When constructing an algorithm flow or neural network, it often appears too cumb
 - 执行算符：*表示迭代模式，+表示添加模式
 - 执行对象：单个对象或者对象列表(与operator迭代)
 
-| Write                        | Code                                                                                           | Function                                                                                                                                                                                                                                   |
-| :--------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| $F=F1F2···Fn$           | F = fn()*F1\*F2\*...*Fn                                                                        | 定义一个顺序迭代输出的函数组，F(x)等价于：<br />Define a set of sequentially executed functions, F(x) equivalent to:<br />F(x)=Fn(...F2(F1(x)))                                                                                            |
-| $F=(F1,F2,···,Fn)$      | F = fn()*(F1,F2,...,Fn)                                                                        | 定义一个顺序拼接输出的函数组，F(x)等价于：<br />F(x)=( F1(x), F2(x), ..., Fn(x) )                                                                                                                                                         |
-| $F=F1+F2+...+Fn$           | F = fn()+F1+F2+...+Fn                                                                          | 定义一个顺序添加输出的函数组，F(x)等价于：<br />F(x)=( *F1(x), *F2(x), ..., *Fn(x) )                                                                                                                                                       |
-|                              | **fn()中可以添加算子:**<br />'+' = 'add' = operator.add<br />'×' = 'mul' = operator.mul | **算子为字符串：'+'/'×'或者[`operator`](https://docs.python.org/zh-cn/3/library/operator.html#module-operator "operator: Functions corresponding to the standard operators.")库中的函数<br />算子为函数名：该函数的输入必须是两个参数** |
-| $F=+(F1,F2,···,Fn)$     | F = fn('+')\*(F1,F2,...,Fn)                                                                    | 定义一个顺序求和输出的函数组，F(x)等价于：<br />F(x)=F1(x)+F2(x)+...+Fn(x)                                                                                                                                                                 |
-| $F=×(F1,F2,···,Fn)$    | F = fn('×')\*(F1,F2,...,Fn)                                                                   | 定义一个顺序求积输出的函数组，F(x)等价于：<br />F(x)=F1(x)×F2(x)×...×Fn(x)                                                                                                                                                              |
-| $F = ＋( F1+F2+···+Fn)$ | F = fn('+')+(F1,F2,...,Fn)                                                                     | 定义一个顺序求和输出的函数组，F(x)等价于：<br />y = 0<br />for i in (\*F1(x),\*F2(x),...,\*Fn(x)):<br />    y = operator.add( y, i)                                                                                                    |
-| $F = ×( F1+F2+···+Fn)$ | F = fn('×')+(F1,F2,...,Fn)                                                                    | 定义一个顺序求和输出的函数组，F(x)等价于：<br />y = 1<br />for i in (\*F1(x),\*F2(x),...,\*Fn(x)):<br />    y = operator.mul( y, i)                                                                                                   |
+| Write                        | Code                                                                               | Function                                                                                                                                                                                                                             |
+| :--------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| $F=F1F2···Fn$           | F = fn()*F1\*F2\*...*Fn                                                            | 定义一个顺序迭代输出的函数组，F(x)等价于：Define a set of sequentially executed functions, F(x) equivalent to:F(x)=Fn(...F2(F1(x)))                                                                                                  |
+| $F=(F1,F2,···,Fn)$      | F = fn()*(F1,F2,...,Fn)                                                            | 定义一个顺序拼接输出的函数组，F(x)等价于：F(x)=( F1(x), F2(x), ..., Fn(x) )                                                                                                                                                          |
+| $F=F1+F2+...+Fn$           | F = fn()+F1+F2+...+Fn                                                              | 定义一个顺序添加输出的函数组，F(x)等价于：F(x)=( *F1(x), *F2(x), ..., *Fn(x) )                                                                                                                                                       |
+|                              | **fn()中可以添加算子:**'+' = 'add' = operator.add'×' = 'mul' = operator.mul | **算子为字符串：'+'/'×'或者[`operator`](https://docs.python.org/zh-cn/3/library/operator.html#module-operator "operator: Functions corresponding to the standard operators.")库中的函数算子为函数名：该函数的输入必须是两个参数** |
+| $F=+(F1,F2,···,Fn)$     | F = fn('+')\*(F1,F2,...,Fn)                                                        | 定义一个顺序求和输出的函数组，F(x)等价于：F(x)=F1(x)+F2(x)+...+Fn(x)                                                                                                                                                                 |
+| $F=×(F1,F2,···,Fn)$    | F = fn('×')\*(F1,F2,...,Fn)                                                       | 定义一个顺序求积输出的函数组，F(x)等价于：F(x)=F1(x)×F2(x)×...×Fn(x)                                                                                                                                                              |
+| $F = ＋( F1+F2+···+Fn)$ | F = fn('+')+(F1,F2,...,Fn)                                                         | 定义一个顺序求和输出的函数组，F(x)等价于：y = 0for i in (\*F1(x),\*F2(x),...,\*Fn(x)):    y = operator.add( y, i)                                                                                                                    |
+| $F = ×( F1+F2+···+Fn)$ | F = fn('×')+(F1,F2,...,Fn)                                                        | 定义一个顺序求和输出的函数组，F(x)等价于：y = 1for i in (\*F1(x),\*F2(x),...,\*Fn(x)):    y = operator.mul( y, i)                                                                                                                    |
 
 ## Function Extend
 
@@ -66,6 +66,65 @@ print(a)
 
 >>None
 3
+```
+
+```output
+Language hasn't been implemented yet
+```
+
+```rust
+input = '''```mermaid
+graph TB
+start((input))'''
+
+┗━="subgraph"
+```
+
+```json
+(input) seq
+ ┗━ (0:mix) loc
+     ┗━ (0:cell) seq
+         -> (0:fc): @monet:Linear(in_features=2, out_features=1, bias=True)^(*args, **kwargs){} *id:1345752574720
+         -> (1:act): @monet:PReLU(num_parameters=1)^(*args, **kwargs){} *id:1345124928000
+     -> 1:cat
+     ┗━ (0:cell) seq
+         -> (0:fc): @monet:Linear(in_features=2, out_features=1, bias=True)^(*args, **kwargs){} *id:1345752574721
+         -> (1:act): @monet:PReLU(num_parameters=1)^(*args, **kwargs){} *id:1345124928001
+     -> 1:cat
+ -> (1:cat): @monet:lambda.locals.lambda^(input) *id:1345751972400
+ ┗━ (2:cell) seq
+     -> (0:fc): @monet:Linear(in_features=2, out_features=1, bias=True)^(*args, **kwargs){} *id:1345752574721
+     -> (1:act): @monet:PReLU(num_parameters=1)^(*args, **kwargs){} *id:1345124928001
+ -> (output)
+```
+
+```mermaid
+graph TB
+start((input)) --> 0.0.0:fc & 0.1.0:fc
+subgraph 0:mix-loc
+    subgraph 0.0:cell-seq
+        0.0.0:fc((0:fc)) -- Linear(in_features=2, out_features=1, bias=True)
+        --> 1345752574720[monet:Linear] --> 0.0.1:act
+    end
+    0.0.1:act((1:act))  -- PReLU(num_parameters=1)
+        --> 1345124928000[monet:PReLU] --> 1:cat
+
+    subgraph 0.1:cell-seq
+        0.1.0:fc((0:fc)) -- Linear(in_features=2, out_features=1, bias=True)
+            --> 1345752731120[monet:Linear] --> 0.1.1:act
+    end
+    0.1.1:act((1:act)) -- PReLU(num_parameters=1)
+        --> 1345124928000[monet:PReLU] --> 1:cat
+end
+1:cat((cat)) -- lambda.locals.lambda(input)
+    --> 1345751972400[monet:cat] --> 0.2.0:fc
+
+subgraph 0.2:cell-seq
+    0.2.0:fc((0:fc)) -- Linear(in_features=2, out_features=1, bias=True)<br>
+        --> 1345752577936[monet:Linear] --> 0.2.1:act
+end
+0.2.1:act((1:act)) -- PReLU(num_parameters=1)
+    --> 1345124928001[monet:PReLU] --> output
 ```
 
 ## ModuleNet API
@@ -249,8 +308,7 @@ F.set_i(1,3,6,6)(torch.randn(1,3,6,6)),F
 
 fn_extend={
 
-    "print": lambda *args,file='result':
+"print": lambda *args,file='result':
 
-    print(args,file=open(f'{file}.log','a+'))
-
+print(args,file=open(f'{file}.log','a+'))
 }
