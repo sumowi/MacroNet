@@ -16,9 +16,9 @@
 -> 10
 """
 
-from typing import Callable, Sized
-from monet.flowfunc import FuncModel as Fn
-from monet.flowfunc import ddf
+from typing import Callable
+from macronet.flowfunc import FuncModel as Fn
+from macronet.flowfunc import ddf
 import inspect
 def get_name_num(_str="fc231"):
     """
@@ -73,7 +73,7 @@ def mn_get(func_name):
     >>> mn_get("bfc")((10,20),1).name
     '@ddf:Bilinear(in1_features=10, in2_features=20, out_features=1, bias=True)'
     """
-    from monet.torch_ddf import torch_dict
+    from macronet.torch_ddf import torch_dict
     name,num,args_str,args = get_args(func_name)
     for k,func in torch_dict.items():
         _name, _num, _args_str, _args = get_args(k)
@@ -103,16 +103,16 @@ def mn_get(func_name):
                 return ddf(lambda *args,**kwargs: func(*args,*_args,**kwargs))
 
 
-class monet(ddf):
-    def __init__(self,module,i=-1,o=0,net='',defdef=None,in_dim=-1):
+class macro(ddf):
+    def __init__(self,module,i=-1,o=0,net='str | Callable',defdef=None,in_dim=-1):
         super().__init__(module)
         self.i = i
-        self.auto_i = (i == 0)
+        self.auto_i = (i >= 0)
         self.o = o
         self.net = net
         self.defdef = defdef
         self.mn_get = mn_get if defdef is None else defdef.get
-        self.in_dim = 1 if net.startswith("cv") and in_dim==-1 else in_dim
+        self.in_dim = 1 if isinstance(net,str) and net.startswith("cv") and in_dim==-1 else in_dim
         if Fn.is_ddf(module):
             self.initkwargs = module.initkwargs
             self.name = module.name
@@ -121,7 +121,7 @@ class monet(ddf):
         if self.auto_i is True and self.i != x.shape[self.in_dim]:
             print(f"[Info] Input size={self.i} is not match, reset to {x.shape[self.in_dim]}:")
             self.i = x.shape[self.in_dim]
-            Nets = Layer(self.i,self.o,self.net,self.in_dim,self.defdef)
+            Nets = Layer(self.i,self.o,self.net,self.in_dim,self.defdef).func
             super().__init__(Nets)
             if hasattr(x,"device") and hasattr(self.func,"to"):
                 self.func.to(x.device)
@@ -129,7 +129,7 @@ class monet(ddf):
 
 
 def Layer(i: int | str | list | tuple=0,
-          o:int | list[int]=1,
+          o:int | list[int]=0,
           net:str | list[str,Callable] ="fc_1",
           in_dim=-1,
           defdef = None,
@@ -265,6 +265,15 @@ def Layer(i: int | str | list | tuple=0,
             if isinstance(net,str):
                 name = get_args(net)[0]
                 func = defdef.get(net) if defdef is not None else mn_get(net)
+            elif isinstance(net,Callable):
+                name = net.__name__
+                if Fn.is_funcmodel(net):
+                    if len(net) == 1:
+                        func = net[0]
+                    else:
+                        func = net
+                else:
+                    func = net
             try:
                 func = func()
             except Exception:
@@ -275,8 +284,9 @@ def Layer(i: int | str | list | tuple=0,
                     func = func(i,o)
                 else:
                     func = func
-                    o = i
-            Net = monet(func,i,o,net,defdef)
+                    o = i if o == -1 else o
+                    i = -1
+            Net = macro(func,i,o,net,defdef)
             Nets.add_module(f"{k}:{name}", Net )
 
         else:

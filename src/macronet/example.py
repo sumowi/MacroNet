@@ -1,5 +1,5 @@
 """
->>> from monet.example import funcspace_dict_full
+>>> from macronet.example import funcspace_dict_full
 >>> ddf_pla = funcspace_dict_full['ddf_w1_w2_b_pla']['func']
 >>> nand = ddf_pla(-0.5,-0.5,0.7)
 >>> nand([0,1])>0,nand([1,1])>0,nand([0,0])>0,nand([1,0])>0
@@ -52,7 +52,7 @@ def func_pla(_w=[0,1],_x=[0,1],b=0,alpha=0.01):
     y = prelu(sum(_w*_x)+b)
     where _w, _x is a vector, y, b is a scalar.
     prelu is the activation function with a alpha default to 0.01.
-    >>> from monet.example import func_pla
+    >>> from macronet.example import func_pla
     >>> func_pla(_w=[0.5,0.5],_x=[0,1],b=-0.7,alpha=0)>0 # [AND]
     False
     >>> func_pla(_w=[0.5,0.5],_x=[0,1],b=-0.2,alpha=0)>0 # [OR]
@@ -77,7 +77,7 @@ def pla_Type(_x=[0,1],Type='NAND'):
     y = prelu(sum(_w*_x)+b)
     where _w, _x is a vector, y, b is a scalar.
     prelu is the activation function with a alpha default to 0.01.
-    >>> from monet.example import pla2_Type
+    >>> from macronet.example import pla2_Type
     >>> pla2_Type([0,1],'AND'),pla2_Type([0,1],'OR'),pla2_Type([0,1],'NAND')
     (False, True, True)
     """
@@ -96,7 +96,7 @@ def pla2_Type(_x=[0,1],Type='NAND'):
 
 def ddf_w1_w2_b_pla(w1=0,w2=1,b=0):
     """This is a function that returns the perceptron function.
-    >>> from monet.example import ddf_w1_w2_b_pla
+    >>> from macronet.example import ddf_w1_w2_b_pla
     >>> nand = ddf_w1_w2_b_pla(w1=-0.5,w2=-0.5,b=0.7)
     >>> nand([0,1])>0,nand([1,1])>0,nand([0,0])>0,nand([1,0])>0
     (True, False, True, True)
@@ -108,7 +108,7 @@ def ddf_w1_w2_b_pla(w1=0,w2=1,b=0):
 
 def parabola(x, A, B, C):
     """Define a parabola fun: y=A*x*x+B*x+C
-    >>> from monet.example import parabola
+    >>> from macronet.example import parabola
     >>> parabola(1, A=1, B=2, C=3)
     6
     """
@@ -117,7 +117,7 @@ def parabola(x, A, B, C):
 def parabolaA_B_C(x, A=1, B=2, C=3):
     """Define a parabola: y=A*x*x+B*x+C.
     Where you want the A,B,C can be bound at func name.
-    >>> from monet.example import parabolaA_B_C
+    >>> from macronet.example import parabolaA_B_C
     >>> parabolaA_B_C(1)
     6
     """

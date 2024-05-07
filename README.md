@@ -84,17 +84,17 @@ start((input))'''
 (input) seq
  ┗━ (0:mix) loc
      ┗━ (0:cell) seq
-         -> (0:fc): @monet:Linear(in_features=2, out_features=1, bias=True)^(*args, **kwargs){} *id:1345752574720
-         -> (1:act): @monet:PReLU(num_parameters=1)^(*args, **kwargs){} *id:1345124928000
+         -> (0:fc): @macro:Linear(in_features=2, out_features=1, bias=True)^(*args, **kwargs){} *id:1345752574720
+         -> (1:act): @macro:PReLU(num_parameters=1)^(*args, **kwargs){} *id:1345124928000
      -> 1:cat
      ┗━ (0:cell) seq
-         -> (0:fc): @monet:Linear(in_features=2, out_features=1, bias=True)^(*args, **kwargs){} *id:1345752574721
-         -> (1:act): @monet:PReLU(num_parameters=1)^(*args, **kwargs){} *id:1345124928001
+         -> (0:fc): @macro:Linear(in_features=2, out_features=1, bias=True)^(*args, **kwargs){} *id:1345752574721
+         -> (1:act): @macro:PReLU(num_parameters=1)^(*args, **kwargs){} *id:1345124928001
      -> 1:cat
- -> (1:cat): @monet:lambda.locals.lambda^(input) *id:1345751972400
+ -> (1:cat): @macro:lambda.locals.lambda^(input) *id:1345751972400
  ┗━ (2:cell) seq
-     -> (0:fc): @monet:Linear(in_features=2, out_features=1, bias=True)^(*args, **kwargs){} *id:1345752574721
-     -> (1:act): @monet:PReLU(num_parameters=1)^(*args, **kwargs){} *id:1345124928001
+     -> (0:fc): @macro:Linear(in_features=2, out_features=1, bias=True)^(*args, **kwargs){} *id:1345752574721
+     -> (1:act): @macro:PReLU(num_parameters=1)^(*args, **kwargs){} *id:1345124928001
  -> (output)
 ```
 
@@ -223,7 +223,7 @@ Lenet = mn.Mix(1, [[6,16],[120,64],10], [['cv_5','sp_2'],'fc','gc'])
 - 增加对+和*的支持，实现如下效果
 
 ```python
-from monet import *
+from macronet import *
 
 Fc=Cell(1,5,['fc','act'])
 Hid1=Cell(5,1,['fc','act'])
@@ -241,7 +241,7 @@ F1(x)==F2(x)
 - 增加对&和**的支持，与+和*不同的是，前者为深拷贝，后者为浅拷贝
 
 ```python
-from monet import *
+from macronet import *
 
 A=layer()
 A2=layer()
@@ -266,7 +266,7 @@ id((A&A)),id((A&A).Net[0]),id((A&A).Net[1]) # 深拷贝
 - 设置输入维度为0，用set_i()或在首次forward时自适应调整顶层输入形状
 
 ```python
-from monet import *
+from macronet import *
 F=Cell(2,10,['cv','fl'])*layer(0,1)
 F(torch.randn(1,2,3,3)),F
 >> (tensor([[0.4370]], grad_fn=<AddmmBackward0>),

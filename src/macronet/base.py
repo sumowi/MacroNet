@@ -1,17 +1,17 @@
 from typing import Any, Callable, overload
-from monet.example import parabolaA_B_C,func_pla,ddf_w1_w2_b_pla,pla_Type,pla2_Type   # noqa: F401
-from monet.example import funcspace_dict_full,funcspace_dict_name,funcspace_dict_value # noqa: F401
+from macronet.example import parabolaA_B_C,func_pla,ddf_w1_w2_b_pla,pla_Type,pla2_Type   # noqa: F401
+from macronet.example import funcspace_dict_full,funcspace_dict_name,funcspace_dict_value # noqa: F401
 
 try:
     import torch
-    from monet.torch_ddf import torch_dict # noqa: F401
+    from macronet.torch_ddf import torch_dict # noqa: F401
 except Exception:
     torch = None
 
 class MoNetInitial:
     def __init__(self,funcspace={}) -> None:
         """f is an blank func, which return the input.
-        >>> from monet.base import MoNetInitial
+        >>> from macronet.base import MoNetInitial
         >>> import torch.nn as nn
         >>> m = MoNetInitial(nn)
         >>> m.Linear(10,1).name
@@ -19,8 +19,8 @@ class MoNetInitial:
         >>> m.ReLU().name
         '@ddf:ReLU()'
         """
-        from monet.defdef import DefDefObj
-        from monet._monet import Layer
+        from macronet.defdef import DefDefObj
+        from macronet._monet import Layer
         from typing import OrderedDict
 
         self.funcspace = OrderedDict()
@@ -46,9 +46,9 @@ class MoNetInitial:
     def ddf(self,func:Callable) -> Callable:...
     def ddf(self,*args,**kwargs):
         """defdef a function,which return a callable function.
-        >>> from monet.base import MoNetInitial
+        >>> from macronet.base import MoNetInitial
         >>> m = MoNetInitial()
-        >>> from monet.example import pla2_Type,func_pla
+        >>> from macronet.example import pla2_Type,func_pla
         >>> m.ddf(pla2_Type).name
         '@ddf:pla2_Type'
         >>> m.ddf("pla__w_b_p1",lambda _w,b,p: lambda _x: func_pla(_w,_x,b,p)).name
@@ -68,9 +68,9 @@ class MoNetInitial:
 
     def get(self,func_name):
         """call a function from defdef functionspace.
-        >>> from monet.base import MoNetInitial
+        >>> from macronet.base import MoNetInitial
         >>> m = MoNetInitial()
-        >>> from monet.example import pla2_Type
+        >>> from macronet.example import pla2_Type
         >>> m.ddf(pla2_Type).name
         '@ddf:pla2_Type'
         >>> AND=m.get("pla2_AND")
@@ -85,6 +85,8 @@ class MoNetInitial:
         >>> (m.f*((AND,NAND),(OR,NAND)))([1,1])
         ((True, False), (True, False))
         >>> (m.f*(AND,NAND)&(OR,NAND))([1,1])
+        ([True, True], [False, False])
+        >>> (m.f*(AND,NAND)%(OR,NAND))([1,1])
         (True, False, True, False)
         >>> (m.f*(AND,NAND)+(OR,NAND))([1,1])
         ((True, False), (True, False))
@@ -100,19 +102,19 @@ class MoNetInitial:
     def net(self,i,o_list,net_list) -> Callable:...
     def net(self,*args,print_=False,in_dim=-1,**kwargs):
         """
-        >>> from monet.base import MoNetInitial,dict_slice
-        >>> from monet.torch_ddf import torch_dict
+        >>> from macronet.base import MoNetInitial,dict_slice
+        >>> from macronet.torch_ddf import torch_dict
         >>> m = MoNetInitial(dict_slice(torch_dict,0,3))
         >>> m.net(10,1,"fc")[0].name
-        '@monet:Linear(in_features=10, out_features=1, bias=True)'
+        '@macro:Linear(in_features=10, out_features=1, bias=True)'
         """
-        return self.Layer(*args,**kwargs,in_dim=in_dim,defdef=self.defdef,print_=False)
+        return self.Layer(*args,**kwargs,in_dim=in_dim,defdef=self.defdef,print_=print_)
 
     def __getattr__(self, name):
         """call a function from defdef functionspace.
-        >>> from monet.base import MoNetInitial
+        >>> from macronet.base import MoNetInitial
         >>> m = MoNetInitial()
-        >>> from monet.example import pla2_Type
+        >>> from macronet.example import pla2_Type
         >>> m.ddf(pla2_Type).name
         '@ddf:pla2_Type'
         >>> AND=m.pla2_AND
@@ -138,9 +140,9 @@ class MoNetInitial:
 
     def __setattr__(self, name: str, value: Any) -> None:
         """call a function from defdef functionspace.
-        >>> from monet.base import MoNetInitial
+        >>> from macronet.base import MoNetInitial
         >>> m = MoNetInitial()
-        >>> from monet.example import pla2_Type
+        >>> from macronet.example import pla2_Type
         >>> m.pla2_Type = pla2_Type
         >>> m.pla2_Type.name
         '@ddf:pla2_Type'
@@ -157,9 +159,9 @@ class MoNetInitial:
 
     def __setitem__(self,name,value):
         """call a function from defdef functionspace.
-        >>> from monet.base import MoNetInitial
+        >>> from macronet.base import MoNetInitial
         >>> m = MoNetInitial()
-        >>> from monet.example import pla2_Type
+        >>> from macronet.example import pla2_Type
         >>> m['pla2_Type'] = pla2_Type
         >>> m['pla2_Type'].name
         '@ddf:pla2_Type'
@@ -171,14 +173,14 @@ class MoNetInitial:
 
     def __call__(self, arg1=None, arg2=None,*args) -> Any:
         """call a function from defdef functionspace.
-        >>> from monet.base import MoNetInitial,torch_dict,pla2_Type
+        >>> from macronet.base import MoNetInitial,torch_dict,pla2_Type
         >>> m = MoNetInitial(torch_dict)
         >>> m(pla2_Type).name
         '@ddf:pla2_Type'
         >>> m("fc").name
         '@ddf:fc'
         >>> m(10,[10,20,10],[["fc","act"]]).name
-        "seq:(10,[10, 20, 10],[['fc', 'act'], ['fc', 'act'], ['fc', 'act']])"
+        'net'
         """
         if arg1 is None:
             return self.f

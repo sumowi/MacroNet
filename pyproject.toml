@@ -1,28 +1,39 @@
 [project]
-name = "MoNet"
+name = "MacroNet"
 version = "0.1.0"
-description = "Default template for PDM package"
+description = "This tool enhances the expansion ability of functions, provides formulaic computing power based on function objects, compresses network structure code from tens of lines to a few lines, greatly enhancing the flexibility and simplicity of artificial intelligence model construction."
 authors = [
-    {name = "hn3ng4n@163.com", email = "hn3ng4n@qq.com"},
-    {name = "yf_ming", email = "yf_ming@csu.edu.cn"},
-    {name = "'明泳帆'", email = "'yf_ming@csu.edu.cn'"},
+    {name = "Yongfan Ming", email = "'yf_ming@csu.edu.cn'"},
+    {name = "Danyang Xiong", email = "'yf_ming@csu.edu.cn'"},
+    {name = "Kexin Chen", email = "'yf_ming@csu.edu.cn'"},
+    {name = "Xiao He", email = "'yf_ming@csu.edu.cn'"},
+    {name = "Min Li", email = "'yf_ming@csu.edu.cn'"},
 ]
 dependencies = [
-    "skorch>=0.15.0",
-    "torch==2.2.1",
 ]
-requires-python = "==3.10.*"
+
+requires-python = ">=3.8"
 readme = "README.md"
 license = {text = "MIT"}
+
+[project.urls]
+Homepage = "https://github.com/sumowi/MacroNet.git"
+Issues = "https://github.com/sumowi/MacroNet.git"
 
 [tool.pdm]
 distribution = true
 
 [tool.pdm.dev-dependencies]
 dev = [
-    "ipykernel>=6.29.4",
-    "numpy>=1.26.4",
-    "pip>=24.0",
+    "skorch",
+    "torch==2.2.1",
+    "ipykernel",
+    "pip",
 ]
+
 [tool.pdm.resolution]
 respect-source-order = true
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"

@@ -1,7 +1,7 @@
-from monet.example import parabolaA_B_C,func_pla,ddf_w1_w2_b_pla,funcspace_json
-from monet.defdef import DefDefObj
-from monet.flowfunc import FuncModel as FlowFunc
-# from monet import Layer as Mix
+from macronet.example import parabolaA_B_C,func_pla,ddf_w1_w2_b_pla,funcspace_json
+from macronet.defdef import DefDefObj
+from macronet.flowfunc import FuncModel as FlowFunc
+# from macronet import Layer as Mix
 from typing import OrderedDict
 class MoNetInitial:
     def __init__(self,funcspace={}) -> None:
@@ -10,9 +10,9 @@ class MoNetInitial:
 
     def ddf(self,func,call=None):
         """defdef a function,which return a callable function
-        >>> from monet.base import MoNetInitial
+        >>> from macronet.base import MoNetInitial
         >>> m = MoNetInitial()
-        >>> from monet.example import pla2_Type,func_pla
+        >>> from macronet.example import pla2_Type,func_pla
         >>> m.ddf(pla2_Type)
         "add 'pla2_Type' to funcspace"
         >>> m.ddf("pla__w_b_p1",lambda _w,b,p: lambda _x: func_pla(_w,_x,b,p))
@@ -47,7 +47,7 @@ class MoNetInitial:
 #     def __init__(self, funcspace = {}) -> None:
 #         super().__init__(funcspace)
 #         """The basic usage:
-#         >>> from monet import DefDef
+#         >>> from macronet import DefDef
 #         >>> mn = DefDef() # first create a ddf object
 #         """
 #         # init a DefDef object, can load a funcspace

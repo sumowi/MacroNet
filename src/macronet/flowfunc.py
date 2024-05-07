@@ -122,7 +122,7 @@ class FuncModel(Base): # type: ignore
     >>> (FuncModel()*max*abs)(-1,-2,-3,-4,-5)
     1
     >>> FuncModel()
-    seq>Fn()
+    seq()
     >>> FuncModel(max).call.__name__
     'seq'
     """
@@ -137,6 +137,7 @@ class FuncModel(Base): # type: ignore
         self._modules = OrderedDict()
         self.call = eval(call) if isinstance(call, str) else call
         self.name = name if name != "" else self.call.__name__
+        self.__name__ = self.name
         self.defdef = defdef
         # Iterate over each element in args
         for i, arg in enumerate(args):
@@ -223,7 +224,7 @@ class FuncModel(Base): # type: ignore
             if isinstance(m,FuncModel) and not isinstance(m,ddf):
                 _outputs, _lines = m.mermaid(is_root=False,inputs=inputs)
                 for i,l in enumerate(_lines.split('\n')[1:]):
-                    if i ==1:
+                    if (i ==1 and m.call == seq) or i ==0:
                         lines.append(f"  subgraph {id(m)}[{k}: {m.call.__name__}]")
                     lines.append("  "+l)
                 lines.append("  end")
@@ -370,7 +371,7 @@ class FuncModel(Base): # type: ignore
 
     def __call__(self,*args, **kwargs) -> Any:
         """
-        >>> from monet.base import MoNetInitial
+        >>> from macronet.base import MoNetInitial
         >>> m = MoNetInitial()
         >>> test = m.f("test")*max*min
         >>> len(m.test)
@@ -389,8 +390,8 @@ class FuncModel(Base): # type: ignore
 
 class ddf(FuncModel):
     '''Add the ability of flow passing and formulaic expression to any function
-    >>> ddf(max).info
-    '@ddf:<built-in function max>'
+    >>> ddf(max).name
+    '@ddf:max'
     >>> ddf(max)(1,2,3)
     3
     '''

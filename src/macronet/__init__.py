@@ -1,8 +1,8 @@
-from monet.base import MoNetInitial
+from macronet.base import MoNetInitial
 
 try:
     import torch.nn as nn
-    from monet.torch_ddf import torch_dict
+    from macronet.torch_ddf import torch_dict
     m = MoNetInitial(nn)
     m.ddf(torch_dict)
 except Exception:

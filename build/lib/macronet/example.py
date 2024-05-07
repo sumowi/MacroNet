@@ -1,17 +1,17 @@
 """
->>> from macronet.example import funcspace_json
->>> ddf_pla = funcspace_json['ddf_w1_w2_b_pla']['func']
+>>> from macronet.example import funcspace_dict_full
+>>> ddf_pla = funcspace_dict_full['ddf_w1_w2_b_pla']['func']
 >>> nand = ddf_pla(-0.5,-0.5,0.7)
 >>> nand([0,1])>0,nand([1,1])>0,nand([0,0])>0,nand([1,0])>0
 (True, False, True, True)
->>> ddf_pba = funcspace_json['parabolaA_B_C']['func']
+>>> ddf_pba = funcspace_dict_full['parabolaA_B_C']['func']
 >>> parabola = ddf_pba(1,2,3)
 >>> parabola(0),parabola(1),parabola(2),parabola(3)
 (3, 6, 11, 18)
 """
 
 
-funcspace_json = {
+funcspace_dict_full = {
     "ddf_w1_w2_b_pla": {
         "default": {
             "w1": 0,
@@ -33,14 +33,14 @@ funcspace_json = {
     }
 }
 
-funcspace_dict={
+funcspace_dict_name={
     "ddf_w1_w2_b_pla": lambda w1=0,w2=0,b=0: lambda _x:
         func_pla(_w=[w1,w2],_x=_x,b=b,alpha=0),
     "parabolaA_B_C": lambda A=1,B=2,C=3: lambda x:
         parabola(x, A=A, B=B, C=C)
 }
 
-funcspace_dict={
+funcspace_dict_value={
     "pla_0_0_0": lambda w1,w2,b: lambda _x:
         func_pla(_w=[w1,w2],_x=_x,b=b,alpha=0),
     "parabola1_2_3": lambda A,B,C: lambda x:
@@ -72,7 +72,7 @@ def func_pla(_w=[0,1],_x=[0,1],b=0,alpha=0.01):
 
     return func(_x) # normal func return func called with _x
 
-def pla2_Type(_x=[0,1],Type='Nand'):
+def pla_Type(_x=[0,1],Type='NAND'):
     """This is a perceptron function.
     y = prelu(sum(_w*_x)+b)
     where _w, _x is a vector, y, b is a scalar.
@@ -89,6 +89,10 @@ def pla2_Type(_x=[0,1],Type='Nand'):
     _w,b=wb[Type]
 
     return func_pla(_w,_x,b)>0
+
+
+def pla2_Type(_x=[0,1],Type='NAND'):
+    return pla_Type(_x,Type)
 
 def ddf_w1_w2_b_pla(w1=0,w2=1,b=0):
     """This is a function that returns the perceptron function.

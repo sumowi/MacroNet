@@ -1,5 +1,5 @@
 """
->>> from monet.torch_ddf import torch_dict
+>>> from macronet.torch_ddf import torch_dict
 >>> Fc = torch_dict['fc_True'](True)(2,1)
 >>> Fc
 Linear(in_features=2, out_features=1, bias=True)

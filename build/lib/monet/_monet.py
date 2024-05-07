@@ -1,5 +1,5 @@
 """
->>> from monet.torch_ddf import torch_dict
+>>> from macronet.torch_ddf import torch_dict
 """
 
 from re import X

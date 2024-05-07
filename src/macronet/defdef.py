@@ -45,8 +45,8 @@ t66tt6666666l,        "func":"funcA_B_C"
 # 函数名的传递
 
 from typing import OrderedDict, Callable, TypeVar, overload
-from monet.flowfunc import FuncModel,ddf
-from monet._monet import get_args
+from macronet.flowfunc import FuncModel,ddf
+from macronet._monet import get_args
 dict_func_type = TypeVar(
     "dict_func_type", dict, Callable, list[dict | Callable], tuple[list | Callable]
 )
@@ -249,7 +249,7 @@ class DefDefObj:
         {'A': 3, 'B': 2, 'C': 3}
         >>> DefDefObj.get_namespace_kwargs({"A":1,"B":2,"C":3},["parabola","_","_"],"parabola_3")
         {'A': 1, 'B': 3, 'C': 3}
-        >>> from monet.base import MoNetInitial, pla2_Type
+        >>> from macronet.base import MoNetInitial, pla2_Type
         >>> m = MoNetInitial()
         >>> m.ddf(pla2_Type).name
         '@ddf:pla2_Type'
@@ -373,7 +373,7 @@ class DefDefObj:
         >>> ddf.get("parabola3")(1,A=0) # A=0 will not work
         8
         >>> ddf.get()
-        seq>Fn()
+        seq()
         """
         import inspect
         if func_name is None:
