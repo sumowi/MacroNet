@@ -1,14 +1,3 @@
-Metadata-Version: 2.1
-Name: MacroNet
-Version: 0.1.2
-Summary: This tool enhances the expansion ability of functions, provides formulaic computing power based on function objects, compresses network structure code from tens of lines to a few lines, greatly enhancing the flexibility and simplicity of artificial intelligence model construction.
-Author-email: Yongfan Ming <yf_ming@csu.edu.cn>, Danyang Xiong <yf_ming@csu.edu.cn>, Kexin Chen <yf_ming@csu.edu.cn>, Xiao He <yf_ming@csu.edu.cn>, Min Li <yf_ming@csu.edu.cn>
-License: MIT
-Project-URL: Homepage, https://github.com/sumowi/MacroNet.git
-Project-URL: Issues, https://github.com/sumowi/MacroNet/issues
-Requires-Python: >=3.8
-Description-Content-Type: text/markdown
-
 **Table of contents**<a id='toc0_'></a>    
 1. [介绍](#toc1_)    
 1.1. [构建逻辑](#toc1_1_)    

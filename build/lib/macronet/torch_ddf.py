@@ -102,7 +102,7 @@ torch_dict = {
     "fl_1_-1": lambda start_dim, end_dim: nn.Flatten(
         start_dim=start_dim, end_dim=end_dim
     ),
-    "cat_1": lambda dim: lambda i, o: lambda input,dim=dim: torch.cat(input,dim=dim),
+    "cat_1": lambda dim:  lambda input,dim=dim: torch.cat(input,dim=dim),
     # nn模块，()传递所有参数
     "nn.Linear_(10,1)": lambda func, args: eval(f"nn.{func}")(*args),
 }

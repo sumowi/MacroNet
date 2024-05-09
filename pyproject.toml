@@ -1,24 +1,24 @@
 [project]
 name = "MacroNet"
-version = "0.1.0"
+version = "0.1.2"
 description = "This tool enhances the expansion ability of functions, provides formulaic computing power based on function objects, compresses network structure code from tens of lines to a few lines, greatly enhancing the flexibility and simplicity of artificial intelligence model construction."
 authors = [
-    {name = "Yongfan Ming", email = "'yf_ming@csu.edu.cn'"},
-    {name = "Danyang Xiong", email = "'yf_ming@csu.edu.cn'"},
-    {name = "Kexin Chen", email = "'yf_ming@csu.edu.cn'"},
-    {name = "Xiao He", email = "'yf_ming@csu.edu.cn'"},
-    {name = "Min Li", email = "'yf_ming@csu.edu.cn'"},
+    {name = "Yongfan Ming", email = "yf_ming@csu.edu.cn"},
+    {name = "Danyang Xiong", email = "yf_ming@csu.edu.cn"},
+    {name = "Kexin Chen", email = "yf_ming@csu.edu.cn"},
+    {name = "Xiao He", email = "yf_ming@csu.edu.cn"},
+    {name = "Min Li", email = "yf_ming@csu.edu.cn"},
 ]
 dependencies = [
 ]
 
 requires-python = ">=3.8"
-readme = "README.md"
+readme = "README_zh.md"
 license = {text = "MIT"}
 
 [project.urls]
 Homepage = "https://github.com/sumowi/MacroNet.git"
-Issues = "https://github.com/sumowi/MacroNet.git"
+Issues = "https://github.com/sumowi/MacroNet/issues"
 
 [tool.pdm]
 distribution = true
@@ -29,6 +29,7 @@ dev = [
     "torch==2.2.1",
     "ipykernel",
     "pip",
+    "twine>=5.0.0",
 ]
 
 [tool.pdm.resolution]

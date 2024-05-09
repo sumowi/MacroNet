@@ -5,6 +5,7 @@ multiplocation and division abilities
 from collections import OrderedDict
 from typing import Any, Callable
 from collections.abc import Sized
+
 import inspect
 
 try:
@@ -48,7 +49,7 @@ def seq(func_ord,*args,**kwargs):
             return y
     return x
 
-def loc_base(func_ord,*args,**kwargs):
+def lay_base(func_ord,*args,**kwargs):
     '''Execute func_ord in parallel, each function uses the same input, and finally
     concatenate all the outputs into a list
     '''
@@ -66,18 +67,18 @@ def loc_base(func_ord,*args,**kwargs):
         return all_y
     return x
 
-def loc(func_ord,*args,**kwargs):
+def lay(func_ord,*args,**kwargs):
     '''Execute func_ord in parallel, each function uses the same input, and finally
     concatenate all the outputs into a list
     '''
-    all_y = loc_base(func_ord,*args,**kwargs)
+    all_y = lay_base(func_ord,*args,**kwargs)
     for i in all_y:
         if not isinstance(i,Callable):
             return tuple(all_y)
-    return FuncModel(all_y,call="loc")
+    return FuncModel(all_y,call="lay")
 
 def vstack(func_ord,*args,**kwargs):
-    all_y = loc_base(func_ord,*args,**kwargs)
+    all_y = lay_base(func_ord,*args,**kwargs)
     cat_y = []
     for i in all_y:
         if not isinstance(i,Callable):
@@ -93,7 +94,7 @@ def vstack(func_ord,*args,**kwargs):
     return FuncModel(cat_y,call="vstack")
 
 def hstack(func_ord,*args,**kwargs):
-    all_y = loc_base(func_ord,*args,**kwargs)
+    all_y = lay_base(func_ord,*args,**kwargs)
     cat_y = {}
     for i in all_y:
         if not isinstance(i,Callable):
@@ -128,7 +129,7 @@ class FuncModel(Base): # type: ignore
     """
 
     # Define an initializer function, with args as a list and call as a function or string
-    def __init__(self, args=[], call: str | Callable = 'seq', name = "",defdef=None):
+    def __init__(self, args=[], call: str | Callable = 'seq', name = "",defdef=None,i=0,o=0):
         # Call the initializer function of the parent class
         super().__init__()
         # If args is not an iterable, convert it to a list
@@ -139,14 +140,17 @@ class FuncModel(Base): # type: ignore
         self.name = name if name != "" else self.call.__name__
         self.__name__ = self.name
         self.defdef = defdef
+        self.i = i
+        self.o = o
+
         # Iterate over each element in args
         for i, arg in enumerate(args):
             # If arg is a Module or ddf object
             if self.is_ddf_funcmodel(arg):
-                if self.is_funcmodel(arg.func):
+                if self.is_ddf(arg.func):
                     arg = arg.func
                 if not self.is_ddf(arg):
-                    if arg.name not in ['loc','seq']:
+                    if arg.name not in ['lay','seq']:
                         self._modules[str(i)+":"+arg.name] = arg[0] if len(arg) == 1 else arg
                         if len(arg) == 1:
                             self[i].__name__ = arg.name
@@ -253,8 +257,8 @@ class FuncModel(Base): # type: ignore
     def __len__(self):
         return len(self._modules)
 
-    def __add__(self,other,mode = loc):
-        '''+ means loc call'''
+    def __add__(self,other,mode = lay):
+        '''+ means lay call'''
         if isinstance(other,int):
             return FuncModel([self]+[FuncModel()]*other,call=mode,name=self.name+"x"+str(other),defdef=self.defdef)
         if isinstance(other,str):
@@ -279,7 +283,7 @@ class FuncModel(Base): # type: ignore
                 elif isinstance(other,list):
                     nn_list += [FuncModel(other,call=seq,defdef=self.defdef)]
                 elif isinstance(other,tuple):
-                    nn_list += [FuncModel(other,call=loc,defdef=self.defdef)]
+                    nn_list += [FuncModel(other,call=lay,defdef=self.defdef)]
                 else:
                     raise ValueError('other should be list/tuple or ddf object')
             else:
@@ -296,11 +300,13 @@ class FuncModel(Base): # type: ignore
     def __mul__(self,other):
         '''* means seq call'''
         if isinstance(other,int):
-            return FuncModel([self]+[~self for i in range(other-1)],call=loc,defdef=self.defdef) if other !=1 else self
+            return FuncModel([self]+[~self for i in range(other-1)],call=lay,defdef=self.defdef) if other !=1 else self
         if isinstance(other,str):
             if other.startswith('~'):
                 other = ~self.defdef.get(other[1:])
             else:
+                if other=="":
+                    return self
                 other = self.defdef.get(other)
             return self*other
         else:
@@ -315,16 +321,17 @@ class FuncModel(Base): # type: ignore
                 if len(other) == 0:
                     nn_list += [other]
                 elif self.is_ddf_funcmodel(other):
+                    other.i = self.o
                     nn_list += [other]
                 elif isinstance(other,list):
                     nn_list += [FuncModel(other,call=seq,defdef=self.defdef)]
                 elif isinstance(other,tuple):
-                    nn_list += [FuncModel(other,call=loc,defdef=self.defdef)]
+                    nn_list += [FuncModel(other,call=lay,defdef=self.defdef)]
                 else:
                     raise ValueError('other should be list/tuple or ddf object')
             else:
                 nn_list += [other]
-        return FuncModel(nn_list,call=seq,name=self.name,defdef=self.defdef)
+        return FuncModel(nn_list,call=seq,name=self.name,defdef=self.defdef,i=self.i,o=self.o)
 
     def __pow__(self,other):
         '''** means seq call with deepcopy'''
@@ -395,12 +402,13 @@ class ddf(FuncModel):
     >>> ddf(max)(1,2,3)
     3
     '''
-    def __init__(self,func,name=None,initkwargs={}):
+    def __init__(self,func,name=None,initkwargs={}, defdef = None):
         super().__init__()
         self.func = func
         self.initkwargs = initkwargs
         self.__name__=str(get_name(self.func)) if name is None else str(name)
         self.name = f'@{self.__class__.__name__}:'+f"{self.__name__}"
+        self.defdef = defdef
 
         if self.func.__class__.__name__ != "builtin_function_or_method":
             signature = inspect.signature(self.func)
@@ -417,11 +425,31 @@ class ddf(FuncModel):
         if kwargs == {}:
             kwargs = self.initkwargs
         else:
-            kwargs.update(self.initkwargs)
+            self.initkwargs.update(kwargs)
+            kwargs = self.initkwargs
         res = self.func(*args, **kwargs)
         if isinstance(res,Callable):
             return ddf(res)
         return res
+
+    def __pow__(self,other):
+        '''** means seq call with deepcopy'''
+        import copy
+        if isinstance(other,int) and other > 0:
+            return FuncModel([self]+[~self for i in range(other-1)],call=seq) if other !=1 else self
+        elif isinstance(other,(tuple,list)):
+            if isinstance(other,tuple) and len(other) == 2 and isinstance(other[1],(tuple, list)):
+                self.i = other[0]
+                self.o = other[1]
+            else:
+                self.i = self.defdef.__i__
+                # print(self.defdef.__i__)
+                self.o = other
+            macro = self.defdef.__Layer__(i=self.i,o=self.o,net=self,defdef=self.defdef,print_=False)
+            self.defdef.__i__ = macro.o[0] if len(macro.o) == 1 else tuple(macro.o)
+            return macro
+        else:
+            return self*copy.deepcopy(other)
 
     def __repr__(self):
         self.func_id =f' *id:{id(self.func)}'

@@ -20,13 +20,15 @@ class MoNetInitial:
         '@ddf:ReLU()'
         """
         from macronet.defdef import DefDefObj
-        from macronet._monet import Layer
+        from macronet.monet import Layer
         from typing import OrderedDict
 
         self.funcspace = OrderedDict()
         self.namespace = OrderedDict()
         self.__funcspace__ = None
+        self.__Layer__ = Layer
         self.defdef = DefDefObj(spaceobj=self)
+        self.global_i = 0
 
         if isinstance(funcspace,dict):
             self.defdef.add(funcspace)
@@ -35,7 +37,7 @@ class MoNetInitial:
 
         self.f = self.defdef.get()
         self.find = self.defdef.find
-        self.Layer = Layer
+
     @overload
     def ddf(self,func_name:str) -> Callable:...
     @overload
@@ -108,7 +110,7 @@ class MoNetInitial:
         >>> m.net(10,1,"fc")[0].name
         '@macro:Linear(in_features=10, out_features=1, bias=True)'
         """
-        return self.Layer(*args,**kwargs,in_dim=in_dim,defdef=self.defdef,print_=print_)
+        return self.__Layer__(*args,**kwargs,in_dim=in_dim,defdef=self.defdef,print_=print_)
 
     def __getattr__(self, name):
         """call a function from defdef functionspace.

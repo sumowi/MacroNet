@@ -105,12 +105,11 @@ def mn_get(func_name):
 
 class macro(ddf):
     def __init__(self,module,i=-1,o=0,net='str | Callable',defdef=None,in_dim=-1):
-        super().__init__(module)
+        super().__init__(module, defdef=defdef)
         self.i = i
-        self.auto_i = (i >= 0)
         self.o = o
+        self.auto_i = (i != -1)
         self.net = net
-        self.defdef = defdef
         self.mn_get = mn_get if defdef is None else defdef.get
         self.in_dim = 1 if isinstance(net,str) and net.startswith("cv") and in_dim==-1 else in_dim
         if Fn.is_ddf(module):
@@ -129,7 +128,7 @@ class macro(ddf):
 
 
 def Layer(i: int | str | list | tuple=0,
-          o:int | list[int]=0,
+          o:int | list[int]=1,
           net:str | list[str,Callable] ="fc_1",
           in_dim=-1,
           defdef = None,
@@ -155,12 +154,12 @@ def Layer(i: int | str | list | tuple=0,
     ┗━ 20 -> net : 20 act
     -> 20
     >>> _ = Layer(10,(10,20),"fc")
-    10 loc (10, 20) ('fc', 'fc')
+    10 lay (10, 20) ('fc', 'fc')
     ┗━ 10 -> net : 10 fc
     ┗━ 10 -> net : 20 fc
     -> (10, 20)
     >>> _ = Layer(10,20,("fc","fc"))
-    10 loc (20, 20) ('fc', 'fc')
+    10 lay (20, 20) ('fc', 'fc')
     ┗━ 10 -> net : 20 fc
     ┗━ 10 -> net : 20 fc
     -> (20, 20)
@@ -170,7 +169,7 @@ def Layer(i: int | str | list | tuple=0,
     -> 1
     >>> _ = Layer(10,[(10,20),1],["fc","bfc"])
     10 seq [(10, 20), 1] ['fc', 'bfc']
-    ┗━ 10 loc (10, 20) ('fc', 'fc')
+    ┗━ 10 lay (10, 20) ('fc', 'fc')
        ┗━ 10 -> net : 10 fc
        ┗━ 10 -> net : 20 fc
        -> (10, 20)
@@ -178,18 +177,18 @@ def Layer(i: int | str | list | tuple=0,
     -> 1
     >>> _ = Layer((10,20),[(10,20)],["bfc","bfc"])
     (10, 20) seq [(10, 20), (10, 20)] ['bfc', 'bfc']
-    ┗━ (10, 20) loc (10, 20) ('bfc', 'bfc')
+    ┗━ (10, 20) lay (10, 20) ('bfc', 'bfc')
        ┗━ (10, 20) -> net : 10 bfc
        ┗━ (10, 20) -> net : 20 bfc
        -> (10, 20)
-    ┗━ (10, 20) loc (10, 20) ('bfc', 'bfc')
+    ┗━ (10, 20) lay (10, 20) ('bfc', 'bfc')
        ┗━ (10, 20) -> net : 10 bfc
        ┗━ (10, 20) -> net : 20 bfc
        -> (10, 20)
     -> (10, 20)
     >>> _ = Layer(2,[(1,1),2,1],[["fc","act"],"cat",["fc","act"]])
     2 seq [(1, 1), 2, 1] [['fc', 'act'], 'cat', ['fc', 'act']]
-    ┗━ 2 loc (1, 1) (['fc', 'act'], ['fc', 'act'])
+    ┗━ 2 lay (1, 1) (['fc', 'act'], ['fc', 'act'])
        ┗━ 2 seq [1, 1] ['fc', 'act']
           ┗━ 2 -> net : 1 fc
           ┗━ 1 -> net : 1 act
@@ -223,12 +222,12 @@ def Layer(i: int | str | list | tuple=0,
             net_list.extend([net_list[-1]]*(max_len-len(net_list)))
             o_list.extend([o_list[-1]]*(max_len-len(o_list)))
         elif isinstance(net_list,(list)) and isinstance(o_list,(tuple)):
-            mode = "loc"
+            mode = "lay"
             if len(net_list) == 1:
                 net_list = net_list[0]
             net_list = (net_list,)*len(o_list)
         elif isinstance(net_list,(tuple)) and isinstance(o_list,(list)):
-            mode = "loc"
+            mode = "lay"
             if len(o_list) == 1:
                 o_list = o_list[0]
             o_list = (o_list,)*len(net_list)
@@ -237,7 +236,7 @@ def Layer(i: int | str | list | tuple=0,
             list(o_list).extend([o_list[-1]]*(max_len-len(o_list)))
             net_list = tuple(net_list)
             o_list = tuple(o_list)
-            mode = "loc"
+            mode = "lay"
         return mode,o_list,net_list
 
     mode,o_list,net_list = mode_check(net,o)
@@ -250,7 +249,7 @@ def Layer(i: int | str | list | tuple=0,
         else:
             if len(o_list) > 1 or len(net_list) > 1:
                 print("   "*(gap-1)+"┗━ "+str(i),mode,o_list,net_list)
-    next_i_list=[]
+    Nets.o=[]
     for k,(o,net) in enumerate(zip(o_list , net_list)):
         if isinstance(o,(list,tuple)) and isinstance(net,(list,tuple)):
             if len(o) == 1 and len(list) == 1:
@@ -279,11 +278,14 @@ def Layer(i: int | str | list | tuple=0,
             except Exception:
                 pass
             finally:
-                func = func.func if Fn.is_ddf(func) else func
-                if list(inspect.signature(func).parameters.keys()) == ["i","o"]:
-                    func = func(i,o)
+                if Fn.is_ddf(func):
+                    ks = list(inspect.signature(func.func).parameters.keys())
                 else:
-                    func = func
+                    ks = list(inspect.signature(func).parameters.keys())
+                if "i" in ks and "o" in ks:
+                    func = func(i,o)
+                    func = func.func if Fn.is_ddf(func) else func
+                else:
                     o = i if o == -1 else o
                     i = -1
             Net = macro(func,i,o,net,defdef)
@@ -296,10 +298,10 @@ def Layer(i: int | str | list | tuple=0,
             else:
                 Nets.add_module(f"{k}-cell",Net)
         i = o[-1] if isinstance(o,list) else o  if mode == "seq" else i
-        next_i_list = [o] if mode == "seq" else next_i_list+[o]
+        Nets.o = [o] if mode == "seq" else Nets.o+[o]
     if print_:
-        next_i_list = next_i_list[0] if len(next_i_list) == 1 else tuple(next_i_list)
-        print("   "*gap+"->",next_i_list)
+        Nets.o = Nets.o[0] if len(Nets.o) == 1 else tuple(Nets.o)
+        print("   "*gap+"->",Nets.o)
     return Nets
 
 X = Fn()

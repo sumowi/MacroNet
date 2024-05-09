@@ -46,7 +46,7 @@ t66tt6666666l,        "func":"funcA_B_C"
 
 from typing import OrderedDict, Callable, TypeVar, overload
 from macronet.flowfunc import FuncModel,ddf
-from macronet._monet import get_args
+from macronet.monet import get_args
 dict_func_type = TypeVar(
     "dict_func_type", dict, Callable, list[dict | Callable], tuple[list | Callable]
 )
@@ -84,7 +84,8 @@ class DefDefObj:
         """
         self.funcspace = spaceobj.funcspace if spaceobj is not None else OrderedDict()
         self.namespace = spaceobj.namespace if spaceobj is not None else OrderedDict()
-
+        self.__Layer__ = spaceobj.__Layer__ if spaceobj is not None else None
+        self.__i__ = 0
         self.find = self.func_find
 
     @staticmethod
@@ -138,11 +139,13 @@ class DefDefObj:
                 if "splits" not in child:
                     child["splits"] = self.get_splits(name, child["default"])
                 new_func = {name: child}
+                if name in self.funcspace:
+                    self.funcspace.pop(name)
                 self.funcspace.update(new_func)
                 if child_print:
                     print(child)
                 # self.funcfind(new_func)
-                return ddf(new_func[name]['func'],name,child['default'])
+                return ddf(new_func[name]['func'],name,child['default'],defdef=self)
             else:
                 return self.add([{k:v} for k,v in dict_or_func.items()])
 
@@ -158,7 +161,7 @@ class DefDefObj:
                 }
             }
             self.add(new_func)
-            return ddf(sth,sth.__name__,initw)
+            return ddf(sth,sth.__name__,initw,defdef=self)
 
         elif isinstance(dict_or_func, (list, tuple)):
             add_list = []
@@ -191,7 +194,7 @@ class DefDefObj:
                 }
             }
             self.add(new_func)
-            return ddf(call,dict_or_func,initw)
+            return ddf(call,dict_or_func,initw,defdef=self)
 
         else:
             raise ValueError(dict_or_func,*args)
@@ -212,8 +215,11 @@ class DefDefObj:
         """
 
         import copy
-
-        for k, v in self.funcspace.items():
+        # Reverse search
+        ks = list(self.funcspace.keys())[::-1]
+        for n in range(len(self.funcspace)):
+            k = ks[n]
+            v = self.funcspace[k]
             child = copy.deepcopy(v)
             if name == k:
                 child["func"] = k
@@ -371,12 +377,12 @@ class DefDefObj:
         >>> ddf.get("parabola3")(1)
         8
         >>> ddf.get("parabola3")(1,A=0) # A=0 will not work
-        8
+        5
         >>> ddf.get()
         seq()
         """
         import inspect
-        if func_name is None:
+        if func_name in [None, ""]:
             return FuncModel(defdef=self)
         if func_name in self.namespace:
             initkwargs = self.namespace[func_name]["default"]
@@ -386,11 +392,11 @@ class DefDefObj:
 
         func = self.funcspace[name]["func"]
         if list(inspect.signature(func).parameters.keys()) == list(initkwargs.keys()):
-            return ddf(func(**initkwargs), func_name)
+            return ddf(func(**initkwargs), func_name, defdef = self)
         elif initkwargs == {} and FuncModel.is_ddf_funcmodel(func):
             return func
         else:
-            return ddf(func, func_name,initkwargs)
+            return ddf(func, func_name,initkwargs, defdef = self)
 
     def __call__(self, func, call=None):
         """get a new func after add a func
@@ -408,7 +414,7 @@ class DefDefObj:
         >>> ddf("parabola3")(1)
         8
         >>> ddf("parabola3")(1,A=0) # A=0 will not work
-        8
+        5
         """
         if isinstance(func, Callable):
             return self.add(func)
